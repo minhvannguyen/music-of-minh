@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { mockSearchResults, searchFilters } from "@/mock/searchResults";
+import { MockProfile, ProfileFilters } from "@/mock/profileData";
 import RenderSongList from "@/components/cards/renderSongList";
 import RenderPlayList from "@/components/cards/renderPlayList";
-import RenderUserList from "@/components/cards/renderUserList";
 
 export default function Search() {
-  const [activeFilter, setActiveFilter] = useState("everything");
+  const [activeFilter, setActiveFilter] = useState("songUpload");
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -19,7 +18,7 @@ export default function Search() {
           <div className=" bg-background p-6 flex justify-between">
             {/* Filters */}
             <div className="flex justify-between">
-              {searchFilters.map((filter) => (
+              {ProfileFilters.map((filter) => (
                 <button
                   key={filter.id}
                   onClick={() => setActiveFilter(filter.id)}
@@ -34,33 +33,20 @@ export default function Search() {
               ))}
             </div>
           </div>
-          {/* Search Results */}
+          {/* playlist */}
           <div className="space-y-2">
-            {activeFilter === "everything" && (
-              <>
-                {mockSearchResults.songs.map((song) => (
-                  <RenderSongList
-                    key={song.id}
-                    song={song}
-                    
-                  />
-                ))}
-                {mockSearchResults.playlists.map((playlist) => (
-                  <RenderPlayList
-                    key={playlist.id}
-                    playlist={playlist}
-                  />
-                ))}
-                {mockSearchResults.people.map((user) => (
-                  <RenderUserList
-                    key={user.id}
-                    user={user}
-                  />
-                ))}
-              </>
-            )}
-            {activeFilter === "songs" &&
-              mockSearchResults.songs.map((song) => (
+        
+          {activeFilter === "songFavorite" &&
+              MockProfile.songs.map((song) => (
+                <RenderSongList
+                  key={song.id}
+                  song={song}
+            
+                />
+              ))}
+            
+            {activeFilter === "songUpload" &&
+              MockProfile.songs.map((song) => (
                 <RenderSongList
                   key={song.id}
                   song={song}
@@ -68,18 +54,11 @@ export default function Search() {
                 />
               ))}
 
-            {activeFilter === "playlists" &&
-              mockSearchResults.playlists.map((playlist) => (
+            {activeFilter === "playlistCreated" &&
+              MockProfile.playlists.map((playlist) => (
                 <RenderPlayList
                   key={playlist.id}
                   playlist={playlist}
-                />
-              ))}
-            {activeFilter === "people" &&
-              mockSearchResults.people.map((user) => (
-                <RenderUserList
-                  key={user.id}
-                  user={user}
                 />
               ))}
           </div>

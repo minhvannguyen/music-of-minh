@@ -169,7 +169,7 @@ export default function NowPlayingCard({
           </motion.div>
           
           <motion.div 
-            className="ml-4"
+            className="ml-6"
             initial={{ x: 30, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             transition={{ duration: 0.3, ease: "easeOut", delay: 0.2 }}
@@ -180,13 +180,13 @@ export default function NowPlayingCard({
                 <Image
                   src={artistAvatar}
                   alt={artistName}
-                  width={50}
-                  height={50}
+                  width={45}
+                  height={45}
                   className="rounded-full border-2 border-gray-200"
                 />
                 <motion.button
                   onClick={onFollow}
-                  className="absolute -bottom-1 -right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                  className="absolute -bottom-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
                 >

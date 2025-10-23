@@ -12,7 +12,6 @@ import { useRouter } from "next/navigation";
 const menuItems = [
   { label: "Đề xuất", icon: <Home size={25} />, href: "/" },
   { label: "Khám phá", icon: <Compass size={25} />, href: "/explore" },
-  { label: "Đã follow", icon: <User size={25} />, href: "/following" },
   { label: "Tải lên", icon: <PlusSquare size={25} />, href: "/upload" },
   { label: "Playlists", icon: <Album size={25} />, href: "/playlist" },
   { label: "Hồ sơ", icon: <User size={25} />, href: "/profile" },
