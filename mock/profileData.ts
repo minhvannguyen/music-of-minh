@@ -69,8 +69,8 @@ export const MockProfile = {
   };
   
   export const ProfileFilters = [
+    { id: "playlistCreated", label: "Playlist của bạn", active: false },
     { id: "songUpload", label: "bài hát của bạn", active: true },
-    { id: "playlistCreated", label: "Playlist đã tạo", active: false },
     { id: "songFavorite", label: "Bài hát yêu thích", active: false },
   ];
   

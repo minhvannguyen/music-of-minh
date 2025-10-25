@@ -1,39 +1,77 @@
-// components/ui/Sidebar.tsx
 "use client";
-import { Home, Compass, User, PlusSquare, MoreHorizontal, LogIn, Search, X, Album } from "lucide-react";
+import {
+  Home,
+  Compass,
+  User,
+  PlusSquare,
+  MoreHorizontal,
+  Album,
+  Bell,
+  Search,
+} from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";  
+import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import { useState } from "react";
-import ThemeToggle from "@/components/themeToggle";
 import { useTheme } from "@/contexts/themeContext";
-import { useRouter } from "next/navigation";
+import AuthSection from "./auth/AuthSection";
+import NotificationPopup from "@/components/notificationPopup";
 
 const menuItems = [
   { label: "Đề xuất", icon: <Home size={25} />, href: "/" },
   { label: "Khám phá", icon: <Compass size={25} />, href: "/explore" },
   { label: "Tải lên", icon: <PlusSquare size={25} />, href: "/upload" },
-  { label: "Playlists", icon: <Album size={25} />, href: "/playlist" },
+  { label: "Thư viện", icon: <Album size={25} />, href: "/library" },
+  { label: "Thông báo", icon: <Bell size={25} />, isNotification: true },
   { label: "Hồ sơ", icon: <User size={25} />, href: "/profile" },
-  { label: "Thêm", icon: <MoreHorizontal size={25} />, href: "/more", isSpecial: true },
+  {
+    label: "Thêm",
+    icon: <MoreHorizontal size={25} />,
+    isSpecial: true,
+  },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [showMorePopup, setShowMorePopup] = useState(false);
   const { theme } = useTheme();
-  const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showMorePopup, setShowMorePopup] = useState(false);
+  const [showNotificationPopup, setShowNotificationPopup] = useState(false);
 
-  const handleMoreClick = (e: React.MouseEvent, item: { isSpecial?: boolean }) => {
-    if (item.isSpecial) {
-      e.preventDefault();
-      setShowMorePopup(true);
-    }
+  // 🎯 Mock notifications
+  const [notifications, setNotifications] = useState([
+    {
+      username: "Mai Anh",
+      message: "đã thích bài hát của bạn 🎵",
+      time: "2 phút trước",
+      isRead: false,
+    },
+    {
+      username: "Hoàng Dũng",
+      message: "đã bình luận: 'Hay quá 😍'",
+      time: "10 phút trước",
+      isRead: true,
+    },
+    {
+      username: "Admin",
+      message: "đã thêm tính năng mới cho bạn!",
+      time: "1 giờ trước",
+      isRead: false,
+    },
+  ]);
+
+  // 🧮 Tính số lượng chưa đọc
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  const handleOpenNotifications = () => {
+    setShowNotificationPopup(true);
   };
 
-  const closePopup = () => {
-    setShowMorePopup(false);
+  // ✅ Khi đóng popup -> đánh dấu tất cả đã đọc
+  const handleCloseNotification = () => {
+    setShowNotificationPopup(false);
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -43,137 +81,113 @@ export default function Sidebar() {
     }
   };
 
-  // Thêm Enter key support (optional)
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch(e);
-    }
-  };
-
   return (
     <>
       <aside className="w-60 h-screen bg-background text-foreground mt-5 px-4">
         {/* Logo */}
-        <div>
-          <div className="flex items-center text-xl font-bold">
-              <Image src={theme === "dark" ? "/logo-white.png" : "/logo-dark.png"} 
-                     alt="Logo" width={132} height={132}/>
-          </div>
-
-          {/* Search */}
-          <div className="px-4 mb-4">
-          <form onSubmit={handleSearch}>
-          <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground" size={20} />
-            <input
-              type="text"
-              placeholder="Tìm kiếm"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={handleKeyPress} // Optional
-              className="w-full rounded-full bg-muted px-10 py-2 text-sm focus:outline-none"
-            />
-          </div>
-          </form>
-          </div>
-          {/* Menu */}
-          <nav>
-            {menuItems.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <div key={item.label}>
-                  {item.isSpecial ? (
-                    <button
-                      onClick={(e) => handleMoreClick(e, item)}
-                      className={`flex items-center gap-4 px-6 py-3 rounded-lg transition font-bold w-full text-left
-                        ${isActive ? "text-yellow-500" : "hover:bg-muted"}
-                      `}
-                    >
-                      {item.icon}
-                      <span>{item.label}</span>
-                    </button>
-                  ) : (
-                    <Link
-                      href={item.href}
-                      className={`flex items-center gap-4 px-6 py-3 rounded-lg transition font-bold 
-                        ${isActive ? "text-yellow-500" : "hover:bg-muted"}
-                      `}
-                    >
-                      {item.icon}
-                      <span>{item.label}</span>
-                    </Link>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
+        <div className="flex items-center text-xl font-bold mb-4">
+          <Image
+            src={theme === "dark" ? "/logo-white.png" : "/logo-dark.png"}
+            alt="Logo"
+            width={132}
+            height={132}
+          />
         </div>
+
+        {/* Search */}
+        <div className="px-4 mb-4">
+          <form onSubmit={handleSearch}>
+            <div className="relative">
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground"
+                size={20}
+              />
+              <input
+                type="text"
+                placeholder="Tìm kiếm"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-full bg-muted px-10 py-2 text-sm focus:outline-none"
+              />
+            </div>
+          </form>
+        </div>
+
+        {/* Menu */}
+        <nav>
+          {menuItems.map((item) => {
+            const isActive = pathname === item.href;
+
+            if (item.isNotification) {
+              return (
+                <button
+                  key={item.label}
+                  onClick={handleOpenNotifications}
+                  className="relative flex items-center gap-4 px-6 py-3 rounded-lg transition font-bold w-full text-left hover:bg-muted"
+                >
+                  <div className="relative">
+                    {item.icon}
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
+                  </div>
+                  <span>{item.label}</span>
+                </button>
+              );
+            }
+
+            if (item.isSpecial) {
+              return (
+                <button
+                  key={item.label}
+                  onClick={() => setShowMorePopup(true)}
+                  className={`flex items-center gap-4 px-6 py-3 rounded-lg transition font-bold w-full text-left ${
+                    isActive ? "text-yellow-500" : "hover:bg-muted"
+                  }`}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </button>
+              );
+            }
+
+            return (
+              <Link
+                key={item.label}
+                href={item.href || ""}
+                className={`flex items-center gap-4 px-6 py-3 rounded-lg transition font-bold ${
+                  isActive ? "text-yellow-500" : "hover:bg-muted"
+                }`}
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
 
         {/* Đăng nhập */}
         <div className="px-4 py-5">
-          <button className="w-full bg-yellow-500 hover:bg-yellow-600 font-bold text-white py-2 rounded-lg flex items-center justify-center gap-2">
-            <LogIn size={18} /> Đăng nhập
-          </button>
-          </div>
+          <AuthSection />
+        </div>
 
-          {/* Footer */}
-          <div className="px-6 py-2 text-sm text-muted-foreground space-y-1">
-            <p>Công ty</p>
-            <p>Chương trình</p>
-            <p>Điều khoản và chính sách</p>
-            <p>© 2025 Music of Minh</p>
-          </div>
-        
+        {/* Footer */}
+        <div className="px-6 py-2 text-sm text-muted-foreground space-y-1">
+          <p>Công ty</p>
+          <p>Chương trình</p>
+          <p>Điều khoản và chính sách</p>
+          <p>© 2025 Music of Minh</p>
+        </div>
       </aside>
 
-      {/* More Popup */}
-      {showMorePopup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-background rounded-lg p-6 w-96 max-w-md mx-4">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-foreground">Tùy chọn bổ sung</h2>
-              <button
-                onClick={closePopup}
-                className="text-muted-foreground hover:text-foreground transition"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="space-y-4">
-              {/* Theme Toggle */}
-              <div className="flex items-center justify-between">
-                <span className="text-foreground font-medium">Chủ đề</span>
-                <ThemeToggle />
-              </div>
-
-              {/* Additional Options */}
-              <div className="space-y-2">
-                <button className="w-full text-left px-4 py-2 rounded-lg hover:bg-muted transition">
-                  <span className="text-foreground">Cài đặt</span>
-                </button>
-                <button className="w-full text-left px-4 py-2 rounded-lg hover:bg-muted transition">
-                  <span className="text-foreground">Trợ giúp</span>
-                </button>
-                <button className="w-full text-left px-4 py-2 rounded-lg hover:bg-muted transition">
-                  <span className="text-foreground">Phản hồi</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="mt-6 pt-4 border-t border-border">
-              <button
-                onClick={closePopup}
-                className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 rounded-lg transition"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Notification Popup */}
+      {showNotificationPopup && (
+        <NotificationPopup
+          onClose={handleCloseNotification}
+          notifications={notifications}
+        />
       )}
     </>
   );

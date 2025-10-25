@@ -1,5 +1,5 @@
 export interface PlayList{
-  id: number;
+  id?: number;
   title?: string;
   creator?: string;
   trackCount?: number;

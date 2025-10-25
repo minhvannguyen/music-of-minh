@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import EditProfileDialog from "@/components/EditProfileDialog";
+import EditProfileDialog from "@/components/cards/EditProfileDialog";
 import { MockProfile, ProfileFilters } from "@/mock/profileData";
 import RenderSongList from "@/components/cards/renderSongList";
 import RenderPlayList from "@/components/cards/renderPlayList";

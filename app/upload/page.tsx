@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export default function UploadPage() {
   const [songTitle, setSongTitle] = useState("");
@@ -93,81 +96,91 @@ export default function UploadPage() {
         onSubmit={handleSubmit}
         className="space-y-6 bg-muted p-6 rounded-2xl shadow-md"
       >
-        {/* --- Ảnh bìa --- */}
-        <div className="flex flex-col items-center space-y-3">
-          <label
-            htmlFor="cover"
-            className="w-48 h-48 rounded-2xl overflow-hidden bg-gray-200 flex items-center justify-center cursor-pointer hover:opacity-90 transition-all shadow-md"
-          >
-            {coverPreview ? (
-              <img
-                src={coverPreview}
-                alt="Cover preview"
-                className="object-cover w-full h-full"
-              />
-            ) : (
-              <span className="text-gray-500 text-sm text-center">
-                📷 Chọn ảnh bìa
-                <br />
-                (JPG, PNG — dưới 5MB)
-              </span>
-            )}
-          </label>
-          <Input
-            id="cover"
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleCoverChange}
-          />
-        </div>
-
         {/* --- Thông tin upload --- */}
         <div className="grid grid-cols-2 gap-6 mt-6">
-          <div>
-            <label className="block mb-1 text-sm font-medium text-foreground">
-              Tên bài hát
-            </label>
-            <Input
-              type="text"
-              placeholder="VD: Anh nhớ em"
-              value={songTitle}
-              onChange={(e) => setSongTitle(e.target.value)}
-            />
+          <div className="flex flex-col items-center">
+            {/* --- Ảnh bìa --- */}
+            <div className="relative w-56 h-56">
+              <label
+                htmlFor="cover"
+                className="w-56 h-56 rounded-2xl overflow-hidden bg-gray-200 flex items-center justify-center cursor-pointer hover:opacity-90 transition-all shadow-md"
+              >
+                {coverPreview ? (
+                  <Image
+                    src={coverPreview || "/default-cover.jpg"} // đảm bảo có giá trị fallback
+                    alt="Cover preview"
+                    fill // dùng fill để tự căn theo khung cha có position: relative
+                    unoptimized // ✅ cần cho ảnh blob URL (ảnh upload)
+                    className="object-cover w-full h-full"
+                  />
+                ) : (
+                  <span className="text-gray-500 text-sm text-center">
+                    📷 Chọn ảnh bìa
+                    <br />
+                    (JPG, PNG — dưới 5MB)
+                  </span>
+                )}
+              </label>
+              <Input
+                id="cover"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleCoverChange}
+              />
+            </div>
+            <div className="flex items-center space-x-2 mt-8">
+              <Switch id="public" className="shadow-md"/>
+              <Label htmlFor="public">Công khai</Label>
+            </div>
           </div>
 
           <div>
-            <label className="block mb-1 text-sm font-medium text-foreground">
-              Nghệ sĩ
-            </label>
-            <Input
-              type="text"
-              placeholder="VD: Sơn Tùng M-TP"
-              value={artistName}
-              onChange={(e) => setArtistName(e.target.value)}
-            />
-          </div>
+            <div className="mb-3">
+              <label className="block mb-1 text-sm font-medium text-foreground">
+                Tên bài hát
+              </label>
+              <Input
+                type="text"
+                placeholder="VD: Anh nhớ em"
+                value={songTitle}
+                onChange={(e) => setSongTitle(e.target.value)}
+              />
+            </div>
 
-          <div>
-            <label className="block mb-1 text-sm font-medium text-foreground">
-              Thể loại
-            </label>
-            <Input
-              type="text"
-              placeholder="VD: Pop, EDM..."
-              value={genre}
-              onChange={(e) => setGenre(e.target.value)}
-            />
-          </div>
+            <div className="mb-3">
+              <label className="block mb-1 text-sm font-medium text-foreground">
+                Nghệ sĩ
+              </label>
+              <Input
+                type="text"
+                placeholder="VD: Sơn Tùng M-TP"
+                value={artistName}
+                onChange={(e) => setArtistName(e.target.value)}
+              />
+            </div>
 
-          <div>
-            <label className="block mb-1 text-sm font-medium text-foreground">
-              File nhạc
-            </label>
-            <Input type="file" accept="audio/*" onChange={handleFileChange} />
-            <p className="text-xs text-gray-500 mt-1">
-              (MP3, WAV — tối đa 10MB)
-            </p>
+            <div className="mb-3">
+              <label className="block mb-1 text-sm font-medium text-foreground">
+                Thể loại
+              </label>
+              <Input
+                type="text"
+                placeholder="VD: Pop, EDM..."
+                value={genre}
+                onChange={(e) => setGenre(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="block mb-1 text-sm font-medium text-foreground">
+                File nhạc
+              </label>
+              <Input type="file" accept="audio/*" onChange={handleFileChange} />
+              <p className="text-xs text-gray-500 mt-1">
+                (MP3, WAV — tối đa 10MB)
+              </p>
+            </div>
           </div>
         </div>
 
