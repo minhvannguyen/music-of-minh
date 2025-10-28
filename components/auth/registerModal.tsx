@@ -24,9 +24,16 @@ import {
   FormControl,
 } from "@/components/ui/form";
 
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+
 // ✅ Schema đăng ký
 const registerSchema = z
   .object({
+    userName: z
+      .string()
+      .min(1, "Tên phải có ít nhất 2 ký tự")
+      .max(50, "Tên quá dài"),
     email: z.string().email("Email không hợp lệ"),
     password: z.string().min(6, "Mật khẩu phải ít nhất 6 ký tự"),
     confirmPassword: z.string().min(6, "Vui lòng xác nhận mật khẩu"),
@@ -40,27 +47,44 @@ export default function RegisterModal({
   open,
   onClose,
   onSwitchToLogin,
+  onOpenVerify,
 }: {
   open: boolean;
   onClose: () => void;
   onSwitchToLogin: () => void;
+  onOpenVerify: (email: string, userData: { username: string; email: string; password: string }) => void;
 }) {
   const { theme } = useTheme();
+  const { register, loading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
 
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { email: "", password: "", confirmPassword: "" },
+    defaultValues: { userName: "", email: "", password: "", confirmPassword: "" },
   });
 
   const onSubmit = async (values: z.infer<typeof registerSchema>) => {
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    console.log("Register:", values);
-    setLoading(false);
-    onSwitchToLogin();
+    try {
+      
+      // Gọi API đăng ký để gửi OTP
+      const result = await register(values.email);
+      
+      if (result.success) {
+        toast.success("Mã xác nhận đã được gửi tới email của bạn!");
+        // Mở modal verify với email và thông tin user
+        onOpenVerify(values.email, {
+          username: values.userName,
+          email: values.email,
+          password: values.password
+        });
+      } else {
+        toast.error(result.message || "Đăng ký thất bại");
+      }
+    } catch (error) {
+      console.error("Register error:", error);
+      toast.error("Có lỗi xảy ra, vui lòng thử lại");
+    }
   };
 
   return (
@@ -81,6 +105,30 @@ export default function RegisterModal({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* User name */}
+            <FormField
+              control={form.control}
+              name="userName"
+              render={({ field }) => (
+                <FormItem>
+                  <Label>Tên của bạn</Label>
+                  <FormControl>
+                    <Input
+                      placeholder="Nhập tên của bạn..."
+                      type="text"
+                      {...field}
+                      className={`${
+                        theme === "dark"
+                          ? "bg-gray-800 border-gray-700 text-white placeholder-gray-400"
+                          : "bg-white border-gray-300 text-gray-900"
+                      }`}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             {/* Email */}
             <FormField
               control={form.control}
@@ -155,7 +203,7 @@ export default function RegisterModal({
                         placeholder="Nhập lại mật khẩu..."
                         type={showConfirmPassword ? "text" : "password"}
                         {...field}
-                        className={`${
+                        className={`mb-6 ${
                           theme === "dark"
                             ? "bg-gray-800 border-gray-700 text-white placeholder-gray-400"
                             : "bg-white border-gray-300 text-gray-900"
@@ -197,65 +245,9 @@ export default function RegisterModal({
           </form>
         </Form>
 
-        {/* Hoặc */}
-        <div className="relative my-4">
-          <div className="absolute inset-0 flex items-center">
-            <span
-              className={`w-full border-t ${
-                theme === "dark" ? "border-gray-700" : "border-gray-200"
-              }`}
-            />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span
-              className={`px-2 ${
-                theme === "dark"
-                  ? "bg-gray-900 text-gray-400"
-                  : "bg-gray-200 text-gray-500"
-              }`}
-            >
-              Hoặc
-            </span>
-          </div>
-        </div>
-
-        {/* Đăng ký bằng Google */}
-        <Button
-          variant="outline"
-          className={`w-full flex items-center justify-center gap-2 border ${
-            theme === "dark"
-              ? "border-gray-700 hover:bg-gray-800 text-gray-200"
-              : "border-gray-300 hover:bg-gray-100 text-gray-800"
-          }`}
-        >
-          <svg
-            className="h-5 w-5"
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="-0.5 0 48 48"
-          >
-            <path
-              fill="#FBBC05"
-              d="M9.827 24c0-1.524.253-2.986.705-4.357L2.623 13.604C1.082 16.734.214 20.26.214 24c0 3.737.868 7.262 2.407 10.388l7.905-6.051A14.56 14.56 0 0 1 9.827 24"
-            />
-            <path
-              fill="#EB4335"
-              d="M23.714 10.133c3.311 0 6.302 1.173 8.652 3.093l6.836-6.827C35.036 2.773 29.695.533 23.714.533c-9.287 0-17.268 5.311-21.09 13.071l7.909 6.04C12.355 14.112 17.55 10.133 23.714 10.133"
-            />
-            <path
-              fill="#34A853"
-              d="M23.714 37.867c-6.165 0-11.36-3.979-13.182-9.511L2.623 34.395C6.445 42.156 14.427 47.467 23.714 47.467c5.732 0 11.204-2.035 15.312-5.849l-7.507-5.804a14.55 14.55 0 0 1-7.805 2.053"
-            />
-            <path
-              fill="#4285F4"
-              d="M46.145 24c0-1.387-.213-2.88-.534-4.267H23.714v9.067h12.604a11.98 11.98 0 0 1-4.8 7.014l7.507 5.804C43.339 37.614 46.145 31.65 46.145 24"
-            />
-          </svg>
-          Đăng ký bằng Google
-        </Button>
-
         {/* Đăng nhập */}
         <p
-          className={`text-center text-sm mt-4 ${
+          className={`text-center text-sm ${
             theme === "dark" ? "text-gray-400" : "text-gray-600"
           }`}
         >

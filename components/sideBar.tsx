@@ -8,6 +8,7 @@ import {
   Album,
   Bell,
   Search,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -24,11 +25,6 @@ const menuItems = [
   { label: "Thư viện", icon: <Album size={25} />, href: "/library" },
   { label: "Thông báo", icon: <Bell size={25} />, isNotification: true },
   { label: "Hồ sơ", icon: <User size={25} />, href: "/profile" },
-  {
-    label: "Thêm",
-    icon: <MoreHorizontal size={25} />,
-    isSpecial: true,
-  },
 ];
 
 export default function Sidebar() {
@@ -36,7 +32,6 @@ export default function Sidebar() {
   const { theme } = useTheme();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const [showMorePopup, setShowMorePopup] = useState(false);
   const [showNotificationPopup, setShowNotificationPopup] = useState(false);
 
   // 🎯 Mock notifications
@@ -120,36 +115,27 @@ export default function Sidebar() {
 
             if (item.isNotification) {
               return (
-                <button
+                <NotificationPopup
                   key={item.label}
-                  onClick={handleOpenNotifications}
-                  className="relative flex items-center gap-4 px-6 py-3 rounded-lg transition font-bold w-full text-left hover:bg-muted"
+                  onClose={handleCloseNotification}
+                  notifications={notifications}
                 >
-                  <div className="relative">
-                    {item.icon}
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                        {unreadCount > 9 ? "9+" : unreadCount}
-                      </span>
-                    )}
-                  </div>
-                  <span>{item.label}</span>
-                </button>
-              );
-            }
-
-            if (item.isSpecial) {
-              return (
-                <button
-                  key={item.label}
-                  onClick={() => setShowMorePopup(true)}
-                  className={`flex items-center gap-4 px-6 py-3 rounded-lg transition font-bold w-full text-left ${
-                    isActive ? "text-yellow-500" : "hover:bg-muted"
-                  }`}
-                >
-                  {item.icon}
-                  <span>{item.label}</span>
-                </button>
+                  <button className="relative flex items-center gap-4 px-6 py-3 rounded-lg transition font-bold w-full text-left hover:bg-muted group">
+                    <div className="relative">
+                      {item.icon}
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
+                      )}
+                    </div>
+                    <span>{item.label}</span>
+                    <ChevronRight
+                      className="text-muted-foreground flex-shrink-0 transition-transform duration-200 group-hover:rotate-90"
+                      size={16}
+                    />
+                  </button>
+                </NotificationPopup>
               );
             }
 
@@ -181,14 +167,6 @@ export default function Sidebar() {
           <p>© 2025 Music of Minh</p>
         </div>
       </aside>
-
-      {/* Notification Popup */}
-      {showNotificationPopup && (
-        <NotificationPopup
-          onClose={handleCloseNotification}
-          notifications={notifications}
-        />
-      )}
     </>
   );
 }

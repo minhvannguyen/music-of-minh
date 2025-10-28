@@ -1,17 +1,19 @@
 "use client";
-import { Button } from "@/components/ui/button";
 import { useTheme } from "@/contexts/themeContext";
+import { Switch } from "@/components/ui/switch";
 
 export default function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
+  const isDark = theme === "dark";
 
   return (
-    <Button
-      onClick={toggleTheme}
-      className="px-4 py-2 rounded-md bg-yellow-500 text-white dark:bg-yellow-400 dark:text-white transition"
-      variant="default"
-    >
-      {theme === "dark" ? "🌙 Dark" : "☀️ Light"}
-    </Button>
+    <label className="inline-flex items-center gap-3 cursor-pointer select-none">
+      <Switch
+        checked={isDark}
+        onCheckedChange={toggleTheme}
+        aria-label="Chế độ tối"
+      />
+      <span className="text-sm">Chế độ tối</span>
+    </label>
   );
 }

@@ -11,6 +11,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 interface ChangePasswordModalProps {
   open: boolean;
@@ -25,9 +27,9 @@ export default function ChangePasswordModal({
   email,
   onSuccess,
 }: ChangePasswordModalProps) {
+  const { changePassword, loading } = useAuth();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
@@ -42,17 +44,20 @@ export default function ChangePasswordModal({
       return;
     }
 
-    setLoading(true);
     setError("");
 
     try {
-      // Gửi request đổi mật khẩu tới backend
-      await new Promise((resolve) => setTimeout(resolve, 1500)); // Giả lập API
-      onSuccess(); // Ví dụ: quay về login
+      // Gọi API đổi mật khẩu
+      const result = await changePassword(email, "", password); // oldPassword để trống cho quên mật khẩu
+      
+      if (result.success) {
+        toast.success("Đổi mật khẩu thành công!");
+        onSuccess(); // Quay về login
+      } else {
+        setError(result.message || "Đổi mật khẩu thất bại");
+      }
     } catch (err) {
       setError("Có lỗi xảy ra, vui lòng thử lại!");
-    } finally {
-      setLoading(false);
     }
   };
 

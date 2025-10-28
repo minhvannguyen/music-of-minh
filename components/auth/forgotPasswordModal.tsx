@@ -23,6 +23,8 @@ import {
   FormMessage,
   FormControl,
 } from "@/components/ui/form";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 const forgotSchema = z.object({
   email: z.string().email("Email không hợp lệ"),
@@ -40,7 +42,7 @@ export default function ForgotPasswordModal({
   onSwitchToLogin: () => void;
 }) {
   const { theme } = useTheme();
-  const [loading, setLoading] = useState(false);
+  const { sendForgotPasswordOtp, loading } = useAuth();
 
   const form = useForm<z.infer<typeof forgotSchema>>({
     resolver: zodResolver(forgotSchema),
@@ -49,19 +51,19 @@ export default function ForgotPasswordModal({
 
   const onSubmit = async (values: z.infer<typeof forgotSchema>) => {
     try {
-      setLoading(true);
-      // TODO: gọi API backend gửi OTP hoặc link reset
-      // ví dụ:
-      // await fetch("/api/auth/forgot", { method: "POST", body: JSON.stringify(values) })
-      await new Promise((r) => setTimeout(r, 900)); // mock
-      // giả sử backend gửi OTP thành công -> mở modal Verify
-      onClose(); // đóng modal hiện tại
-      onOpenVerify(values.email); // mở modal verify với email
+      // Gọi API gửi OTP quên mật khẩu
+      const result = await sendForgotPasswordOtp(values.email);
+      
+      if (result.success) {
+        toast.success("Mã xác nhận đã được gửi tới email của bạn!");
+        onClose(); // đóng modal hiện tại
+        onOpenVerify(values.email); // mở modal verify với email
+      } else {
+        toast.error(result.message || "Gửi mã OTP thất bại");
+      }
     } catch (err) {
       console.error(err);
-      // show toast / set form lỗi nếu cần
-    } finally {
-      setLoading(false);
+      toast.error("Có lỗi xảy ra, vui lòng thử lại");
     }
   };
 
