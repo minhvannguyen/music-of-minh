@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import LoginModal from "@/components/auth/loginModal";
 import RegisterModal from "@/components/auth/registerModal";
 import ForgotPasswordModal from "@/components/auth/forgotPasswordModal";
@@ -9,18 +9,15 @@ import VerifyEmailRegister from "@/components/auth/verifyEmailRegister";
 import {
   LogIn,
   LogOut,
-  User2,
-  Shield,
-  CreditCard,
-  Bell,
   Sparkles,
-  ChevronDown,
+  CreditCard,
   ChevronRight,
 } from "lucide-react";
 import ChangePasswordModal from "./changePasswordModal";
 import { useAuth } from "@/hooks/useAuth";
+import { useAuthContext } from "@/contexts/authContext";
 import ThemeToggle from "@/components/themeToggle";
-
+import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -28,14 +25,6 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { useTokenRefresh } from "@/hooks/useTokenRefresh";
-
-type UserInfo = {
-  username?: string | null;
-  email?: string | null;
-  role?: string | null;
-  avatarUrl?: string | null;
-};
 
 export default function AuthSection() {
   const [activeModal, setActiveModal] = useState<
@@ -50,94 +39,61 @@ export default function AuthSection() {
   const [verifyEmail, setVerifyEmail] = useState<string>("");
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState<string>("");
 
-  const [user, setUser] = useState<UserInfo>({
-    username: null,
-    email: null,
-    role: null,
-    avatarUrl: null,
-  });
-
   const [registerUserData, setRegisterUserData] = useState<{
     username: string;
     email: string;
     password: string;
   } | null>(null);
 
-  const isLoggedIn = useMemo(() => {
-    return user?.username && user?.email;
-  }, [user?.username, user?.email]);
-
+  const { user, isLoggedIn, refreshUser } = useAuthContext();
   const { logout } = useAuth();
-  const { startTokenRefresh, stopTokenRefresh } = useTokenRefresh();
+  const router = useRouter();
 
-  useEffect(() => {
-    const fetchUserInfo = async () => {
-      try {
-        const response = await fetch('/api/auth/me');
-        const data = await response.json();
-        
-        if (data.success) {
-          setUser({
-            username: data.user.username,
-            email: data.user.email,
-            role: data.user.role,
-            avatarUrl: null, // You can add avatarUrl to cookies if needed
-          });
-          // Start token refresh when user is logged in
-          startTokenRefresh();
-        } else {
-          setUser({
-            username: null,
-            email: null,
-            role: null,
-            avatarUrl: null,
-          });
-          // Stop token refresh when user is not logged in
-          stopTokenRefresh();
-        }
-      } catch (error) {
-        console.error('Failed to fetch user info:', error);
-        setUser({
-          username: null,
-          email: null,
-          role: null,
-          avatarUrl: null,
-        });
-        stopTokenRefresh();
-      }
-    };
-
-    fetchUserInfo();
-
-    const onAuthChanged = () => fetchUserInfo();
-    
-    if (typeof window !== "undefined") {
-      window.addEventListener("auth-changed", onAuthChanged);
-    }
-    
-    return () => {
-      if (typeof window !== "undefined") {
-        window.removeEventListener("auth-changed", onAuthChanged);
-      }
-      stopTokenRefresh();
-    };
-  }, [startTokenRefresh, stopTokenRefresh]); // ✅ Bây giờ an toàn với useCallback
-
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     setActiveModal(null);
+    // Context sẽ tự động cập nhật khi nhận event "auth-changed"
   };
 
-  const Avatar = ({ size = 32 }: { size?: number }) => {
-    const initials = user?.username?.charAt(0)?.toUpperCase() ?? "U";
-    return user?.avatarUrl ? (
+  const Avatar = ({ size = 36 }: { size?: number }) => {
+    if (!user) return null;
+    
+    const initials = user.username?.charAt(0)?.toUpperCase() ?? "U";
+    
+    // Chuyển đổi relative path thành full URL
+    const getAvatarUrl = (url: string | null | undefined): string | null => {
+      if (!url) return null;
+      
+      // Nếu đã là full URL (http/https), giữ nguyên
+      if (url.startsWith("http://") || url.startsWith("https://")) {
+        return url;
+      }
+      
+      // Nếu là relative path, thêm API base URL
+      if (url.startsWith("/")) {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+        // Loại bỏ trailing slash từ apiBaseUrl nếu có
+        const baseUrl = apiBaseUrl.replace(/\/$/, "");
+        return `${baseUrl}${url}`;
+      }
+      
+      return url;
+    };
+    
+    const avatarUrl = getAvatarUrl(user.avatarUrl);
+    
+    return avatarUrl ? (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={user.avatarUrl}
+        src={avatarUrl}
         alt="avatar"
         width={size}
         height={size}
-        className="rounded-10% object-cover"
+        className="rounded-lg object-cover"
+        onError={(e) => {
+          // Nếu ảnh load lỗi, ẩn ảnh và hiển thị placeholder
+          e.currentTarget.style.display = 'none';
+        }}
       />
     ) : (
       <div
@@ -166,7 +122,7 @@ export default function AuthSection() {
             <button className="w-full flex items-center justify-between gap-2 rounded-lg px-2 py-2 bg-muted hover:bg-muted transition group">
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 <div className="flex-shrink-0">
-                  <Avatar size={34} />
+                  <Avatar size={36} />
                 </div>
                 <div className="min-w-0 text-left flex-1">
                   <div className="text-sm font-semibold truncate">
@@ -190,7 +146,10 @@ export default function AuthSection() {
             side="right"
             align="end"
           >
-            <div className="flex items-center gap-3 px-2 py-2">
+            <button
+              onClick={() => router.push("/profile")}
+              className="flex items-center gap-3 px-2 py-2 w-full hover:bg-accent rounded-md transition-colors cursor-pointer"
+            >
               <Avatar size={36} />
               <div className="min-w-0">
                 <div className="text-sm font-semibold truncate">
@@ -200,7 +159,7 @@ export default function AuthSection() {
                   {user?.email}
                 </div>
               </div>
-            </div>
+            </button>
             <DropdownMenuSeparator />
 
             <DropdownMenuItem asChild>
@@ -217,19 +176,12 @@ export default function AuthSection() {
               </button>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            
             {/* Theme Toggle */}
             <div className="px-2 py-1.5">
               <ThemeToggle />
             </div>
             <DropdownMenuSeparator />
-            {/* {user?.role && (
-              <>
-                <DropdownMenuLabel className="px-2 py-1.5 text-xs">
-                  Vai trò: {user.role}
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-              </>
-            )} */}
 
             <DropdownMenuItem asChild>
               <button
@@ -261,6 +213,24 @@ export default function AuthSection() {
           setActiveModal("verify-register");
         }}
       />
+      
+      {/* Modal xác thực OTP khi đăng ký */}
+      {registerUserData && (
+        <VerifyEmailRegister
+          open={activeModal === "verify-register"}
+          onClose={() => setActiveModal(null)}
+          email={verifyEmail}
+          userData={registerUserData}
+          onVerified={() => {
+            // OTP đúng → quay về màn đăng nhập
+            setActiveModal("login");
+            setVerifyEmail("");
+            setRegisterUserData(null);
+            refreshUser(); // Refresh user info sau khi verify thành công
+          }}
+          onSwitchToForgot={() => setActiveModal("register")}
+        />
+      )}
 
       <ForgotPasswordModal
         open={activeModal === "forgot"}

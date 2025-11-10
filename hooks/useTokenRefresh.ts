@@ -7,14 +7,14 @@ export function useTokenRefresh() {
 
   const refreshToken = useCallback(async () => {
     try {
-      const response = await fetch('/api/auth/refresh', {
+      const response = await fetch('/api/auth/RefreshToken', {
         method: 'POST',
         credentials: 'include',
       });
 
       if (!response.ok) {
         // Refresh failed, clear cookies and redirect to login
-        await fetch('/api/auth/clear-cookies', { method: 'POST' });
+        await fetch('/api/auth/Logout', { method: 'POST' });
         window.dispatchEvent(new Event("auth-changed"));
         return false;
       }

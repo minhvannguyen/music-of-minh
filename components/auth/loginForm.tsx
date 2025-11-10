@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,13 +29,16 @@ type FormValues = z.infer<typeof schema>;
 export default function LoginForm({
   onSuccess,
   onSwitchToForgot,
+  open,
 }: {
   onSuccess: () => void;
   onSwitchToForgot: () => void;
+  open: boolean;
 }) {
   const { theme } = useTheme();
   const { login, loading } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { email: "", password: "" },
@@ -57,10 +60,15 @@ export default function LoginForm({
       );
     }
   };
+  
+  // reset khi modal mở lại
+  useEffect(() => {
+    form.reset({ email: "", password: "" });
+  }, [open]);
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" autoComplete="off">
         <FormField
           control={form.control}
           name="email"
@@ -71,6 +79,8 @@ export default function LoginForm({
                 <Input
                   placeholder="Nhập email..."
                   type="email"
+                  autoComplete="one-time-code"  
+                  
                   {...field}
                   className={`${
                     theme === "dark"
@@ -95,6 +105,7 @@ export default function LoginForm({
                   <Input
                     type={showPassword ? "text" : "password"}
                     placeholder="Nhập mật khẩu..."
+                    autoComplete="new-password"  
                     {...field}
                     className={`${
                       theme === "dark"

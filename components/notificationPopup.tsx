@@ -42,7 +42,7 @@ export default function NotificationPopup({
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground transition p-1"
           >
-            <X size={16} />
+            {/* <X size={16} /> */}
           </button>
         </div>
         

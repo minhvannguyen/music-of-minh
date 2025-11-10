@@ -42,7 +42,7 @@ export default function VerifyEmailModal({
   open: boolean;
   onClose: () => void;
   email: string;
-  onVerified?: () => void;
+  onVerified?: (tempToken: string) => void;
   onResendRequest?: (email: string) => Promise<void>;
   onSwitchToForgot: () => void;
 }) {
@@ -77,8 +77,9 @@ export default function VerifyEmailModal({
       
       if (result.success) {
         toast.success("Xác nhận thành công!");
+        const tempToken = result.data?.tempToken;
         onClose();
-        onVerified?.(); // Mở modal đổi mật khẩu
+        onVerified?.(tempToken); // Mở modal đổi mật khẩu
       } else {
         toast.error(result.message || "Xác nhận mã OTP thất bại");
       }

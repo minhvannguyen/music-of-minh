@@ -6,16 +6,71 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { songsAPI, genresAPI } from "@/lib/api";
+import { useAuthContext } from "@/contexts/authContext";
+import { useRouter } from "next/navigation";
+import { CreateSongRequest } from "@/types/song";
+import { Genre } from "@/types/genre";
+import { toast } from "sonner";
 
 export default function UploadPage() {
+  const router = useRouter();
+  const { user, isLoggedIn } = useAuthContext();
   const [songTitle, setSongTitle] = useState("");
   const [artistName, setArtistName] = useState("");
-  const [genre, setGenre] = useState("");
+  const [genreId, setGenreId] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
   const [cover, setCover] = useState<File | null>(null);
   const [audioPreview, setAudioPreview] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  const [error, setError] = useState("");
+  const [isPublic, setIsPublic] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // State cho genres
+  const [genres, setGenres] = useState<Genre[]>([]);
+  const [isLoadingGenres, setIsLoadingGenres] = useState(true);
+
+  // Fetch genres khi component mount
+  useEffect(() => {
+    const fetchGenres = async () => {
+      try {
+        setIsLoadingGenres(true);
+        const response = await genresAPI.getGenres();
+        
+        if (response?.success && response.data) {
+          setGenres(response.data);
+        } else {
+          console.error("Failed to fetch genres:", response?.message);
+          toast.error("Không thể tải danh sách thể loại. Vui lòng thử lại.");
+        }
+      } catch (error) {
+        console.error("Error fetching genres:", error);
+        toast.error("Có lỗi xảy ra khi tải danh sách thể loại.");
+      } finally {
+        setIsLoadingGenres(false);
+      }
+    };
+
+    if (isLoggedIn) {
+      fetchGenres();
+    }
+  }, [isLoggedIn]);
+
+  // Kiểm tra đăng nhập khi mount
+  useEffect(() => {
+    if (!isLoggedIn) {
+      router.push("/");
+      toast.error("Vui lòng đăng nhập để tải nhạc lên!");
+      return;
+    }
+  }, [isLoggedIn, router]);
 
   // --- Handle chọn file nhạc ---
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -24,22 +79,22 @@ export default function UploadPage() {
 
     const validTypes = ["audio/mpeg", "audio/wav", "audio/mp3"];
     if (!validTypes.includes(selected.type)) {
-      setError("❌ Chỉ chấp nhận file nhạc MP3 hoặc WAV!");
+      toast.error("Chỉ chấp nhận file nhạc MP3 hoặc WAV!");
       setFile(null);
       setAudioPreview(null);
       return;
     }
 
     if (selected.size > 10 * 1024 * 1024) {
-      setError("⚠️ File quá lớn! Vui lòng chọn file dưới 10MB.");
+      toast.error("File quá lớn! Vui lòng chọn file dưới 10MB.");
       setFile(null);
       setAudioPreview(null);
       return;
     }
 
-    setError("");
     setFile(selected);
     setAudioPreview(URL.createObjectURL(selected));
+    toast.success("Đã chọn file nhạc!");
   };
 
   // --- Handle chọn ảnh bìa ---
@@ -49,33 +104,75 @@ export default function UploadPage() {
 
     const validTypes = ["image/jpeg", "image/png", "image/jpg"];
     if (!validTypes.includes(selected.type)) {
-      setError("❌ Ảnh bìa chỉ chấp nhận JPG hoặc PNG!");
+      toast.error("Ảnh bìa chỉ chấp nhận JPG hoặc PNG!");
       setCover(null);
       setCoverPreview(null);
       return;
     }
 
     if (selected.size > 5 * 1024 * 1024) {
-      setError("⚠️ Ảnh bìa quá lớn! Vui lòng chọn ảnh dưới 5MB.");
+      toast.error("Ảnh bìa quá lớn! Vui lòng chọn ảnh dưới 5MB.");
       setCover(null);
       setCoverPreview(null);
       return;
     }
 
-    setError("");
     setCover(selected);
     setCoverPreview(URL.createObjectURL(selected));
+    toast.success("Đã chọn ảnh bìa!");
   };
 
   // --- Submit form ---
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!songTitle || !artistName || !genre || !file || !cover) {
-      setError("⚠️ Vui lòng điền đủ thông tin, chọn file nhạc và ảnh bìa!");
+    
+    if (!isLoggedIn || !user?.id) {
+      toast.error("Vui lòng đăng nhập để tải nhạc lên!");
       return;
     }
-    setError("");
-    alert(`🎶 Đã tải lên: ${songTitle} - ${artistName}`);
+
+    if (!songTitle || !artistName || !genreId || !file || !cover) {
+      toast.error("Vui lòng điền đủ thông tin, chọn file nhạc và ảnh bìa!");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const requestData: CreateSongRequest = {
+        title: songTitle,
+        artistId: user.id,
+        private: !isPublic,
+        audioFile: file,
+        coverImage: cover,
+        genreIds: [parseInt(genreId)], // Đổi từ genreId sang genreIds (mảng)
+        // duration có thể bỏ qua hoặc để backend tự tính
+      };
+
+      const response = await songsAPI.createSong(requestData);
+
+      if (response?.success) {
+        toast.success(response.message || "Tải lên thành công!");
+        // Reset form
+        setSongTitle("");
+        setArtistName("");
+        setGenreId("");
+        setFile(null);
+        setCover(null);
+        setAudioPreview(null);
+        setCoverPreview(null);
+        setIsPublic(true);
+      } else {
+        toast.error(response?.message || "Tải lên thất bại. Vui lòng thử lại!");
+      }
+    } catch (error: unknown) {
+      console.error("Failed to upload song:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Có lỗi xảy ra. Vui lòng thử lại!"
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Dọn URL tạm
@@ -85,6 +182,11 @@ export default function UploadPage() {
       if (coverPreview) URL.revokeObjectURL(coverPreview);
     };
   }, [audioPreview, coverPreview]);
+
+  // Hiển thị loading nếu chưa xác định trạng thái đăng nhập
+  if (!isLoggedIn) {
+    return null;
+  }
 
   return (
     <div className="p-8 max-w-3xl mx-auto">
@@ -107,10 +209,10 @@ export default function UploadPage() {
               >
                 {coverPreview ? (
                   <Image
-                    src={coverPreview || "/default-cover.jpg"} // đảm bảo có giá trị fallback
+                    src={coverPreview || "/default-cover.jpg"}
                     alt="Cover preview"
-                    fill // dùng fill để tự căn theo khung cha có position: relative
-                    unoptimized // ✅ cần cho ảnh blob URL (ảnh upload)
+                    fill
+                    unoptimized
                     className="object-cover w-full h-full"
                   />
                 ) : (
@@ -127,10 +229,17 @@ export default function UploadPage() {
                 accept="image/*"
                 className="hidden"
                 onChange={handleCoverChange}
+                disabled={isLoading}
               />
             </div>
             <div className="flex items-center space-x-2 mt-8">
-              <Switch id="public" className="shadow-md"/>
+              <Switch 
+                id="public" 
+                className="shadow-md"
+                checked={isPublic}
+                onCheckedChange={setIsPublic}
+                disabled={isLoading}
+              />
               <Label htmlFor="public">Công khai</Label>
             </div>
           </div>
@@ -145,6 +254,7 @@ export default function UploadPage() {
                 placeholder="VD: Anh nhớ em"
                 value={songTitle}
                 onChange={(e) => setSongTitle(e.target.value)}
+                disabled={isLoading}
               />
             </div>
 
@@ -157,6 +267,7 @@ export default function UploadPage() {
                 placeholder="VD: Sơn Tùng M-TP"
                 value={artistName}
                 onChange={(e) => setArtistName(e.target.value)}
+                disabled={isLoading}
               />
             </div>
 
@@ -164,20 +275,41 @@ export default function UploadPage() {
               <label className="block mb-1 text-sm font-medium text-foreground">
                 Thể loại
               </label>
-              <Input
-                type="text"
-                placeholder="VD: Pop, EDM..."
-                value={genre}
-                onChange={(e) => setGenre(e.target.value)}
-              />
+              <Select
+                value={genreId}
+                onValueChange={setGenreId}
+                disabled={isLoading || isLoadingGenres}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Chọn thể loại" />
+                </SelectTrigger>
+                <SelectContent>
+                  {genres.map((genre) => (
+                    <SelectItem key={genre.id} value={genre.id.toString()}>
+                      {genre.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {isLoadingGenres && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Đang tải danh sách thể loại...
+                </p>
+              )}
             </div>
 
             <div>
               <label className="block mb-1 text-sm font-medium text-foreground">
                 File nhạc
               </label>
-              <Input type="file" accept="audio/*" onChange={handleFileChange} />
-              <p className="text-xs text-gray-500 mt-1">
+              <Input 
+                type="file" 
+                accept="audio/*" 
+                onChange={handleFileChange}
+                disabled={isLoading}
+              />
+              
+              <p className="text-xs text-gray-500 mt-1 ml-5">
                 (MP3, WAV — tối đa 10MB)
               </p>
             </div>
@@ -195,17 +327,10 @@ export default function UploadPage() {
           </div>
         )}
 
-        {/* --- Hiển thị lỗi --- */}
-        {error && (
-          <p className="text-sm text-red-500 font-medium text-center">
-            {error}
-          </p>
-        )}
-
         {/* --- Nút tải lên --- */}
         <div className="flex justify-center pt-2">
-          <Button type="submit" className="px-8 py-2">
-            🚀 Tải lên
+          <Button type="submit" className="px-8 py-2" disabled={isLoading}>
+            {isLoading ? "⏳ Đang tải lên..." : "🚀 Tải lên"}
           </Button>
         </div>
       </form>

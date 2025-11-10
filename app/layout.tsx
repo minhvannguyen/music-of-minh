@@ -2,7 +2,13 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/sideBar";
 import { ThemeProvider } from "@/contexts/themeContext";
+import { AuthProvider } from "@/contexts/authContext";
+import GlobalPlayerBar from "@/components/player/GlobalPlayerBar";
 import { Toaster } from "@/components/ui/sonner";
+import { SongProvider } from "@/contexts/songContext";
+import { FavoriteProvider } from "@/contexts/favoriteContext";
+import { PlayListProvider } from "@/contexts/playListContext";
+import { FollowProvider } from "@/contexts/followContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,9 +29,19 @@ export default function RootLayout({
     <html lang="en">
       <body className={`flex ${geistSans.variable} ${geistMono.variable} antialiased`}>
         <ThemeProvider>
-          <Sidebar />
-          <Toaster />
-          <main className="flex-1 overflow-y-auto">{children}</main>
+          <AuthProvider>
+            <SongProvider>
+              <FavoriteProvider>
+                <PlayListProvider>
+                  <FollowProvider>
+                    <Sidebar />
+                    <Toaster />
+                    <main className="flex-1 overflow-y-auto">{children}</main>
+                  </FollowProvider>
+                </PlayListProvider>
+              </FavoriteProvider>
+            </SongProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

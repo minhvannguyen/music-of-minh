@@ -27,7 +27,7 @@ export default function ChangePasswordModal({
   email,
   onSuccess,
 }: ChangePasswordModalProps) {
-  const { changePassword, loading } = useAuth();
+  const { changePasswordForgot, loading } = useAuth();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -45,18 +45,15 @@ export default function ChangePasswordModal({
     }
 
     setError("");
-
     try {
-      // Gọi API đổi mật khẩu
-      const result = await changePassword(email, "", password); // oldPassword để trống cho quên mật khẩu
-      
+      const result = await changePasswordForgot(email, password);
       if (result.success) {
         toast.success("Đổi mật khẩu thành công!");
-        onSuccess(); // Quay về login
+        onSuccess();
       } else {
         setError(result.message || "Đổi mật khẩu thất bại");
       }
-    } catch (err) {
+    } catch {
       setError("Có lỗi xảy ra, vui lòng thử lại!");
     }
   };
@@ -66,9 +63,6 @@ export default function ChangePasswordModal({
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="flex items-center justify-between">
           <DialogTitle>Đổi mật khẩu</DialogTitle>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="w-4 h-4" />
-          </Button>
         </DialogHeader>
 
         <div className="space-y-4">

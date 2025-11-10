@@ -3,9 +3,17 @@
 import NowPlayingCard from "@/components/cards/nowPlayingCard";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { mockSongs } from "@/mock/songs";
+import { songsAPI } from "@/lib/api";
+import { SongDisplayData, SongApiResponse } from "@/types/song";
+import { api } from "@/lib/api";
+
 
 export default function Home() {
+  const [songs, setSongs] = useState<SongDisplayData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -18,59 +26,218 @@ export default function Home() {
   const [hasSwiped, setHasSwiped] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const isProcessingRef = useRef<boolean>(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [hasInteracted, setHasInteracted] = useState(false);
+  
   
   // Wheel scroll accumulation
   const wheelAccumulatorRef = useRef<number>(0);
-  const wheelThreshold = 100; // Tích lũy 100px mới trigger
+  const wheelThreshold = 100;
   const wheelTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const currentSong = mockSongs[currentIndex];
+  const currentSong = songs[currentIndex];
+
+  // Helper function để build full URL
+  const buildFullUrl = (path: string): string => {
+    if (!path) return "";
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return path;
+    }
+    const baseUrl = "https://localhost:7114";
+    return path.startsWith("/") ? `${baseUrl}${path}` : `${baseUrl}/${path}`;
+  };
+
+  // Map API response to display format
+  const mapApiSongToDisplay = (apiSong: SongApiResponse): SongDisplayData => {
+    return {
+      id: apiSong.id,
+      thumbnail: buildFullUrl(apiSong.coverUrl) || "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&h=800&fit=crop",
+      artistName: apiSong.artistName,
+      songTitle: apiSong.title,
+      genreName: apiSong.genreNames && apiSong.genreNames.length > 0 
+        ? apiSong.genreNames.join(", ") 
+        : "", // Join array thành string
+      hashtags: [],
+      musicInfo: "Music 🎧",
+      likes: 0,
+      comments: 0,
+      saves: 0,
+      shares: 0,
+      artistAvatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop&crop=face",
+      fileUrl: apiSong.fileUrl,
+      audioUrl: buildFullUrl(apiSong.fileUrl),
+    };
+  };
+
+  // Fetch songs from API với pagination
+  const fetchSongs = useCallback(async (page: number, append: boolean = false) => {
+    if (append) {
+      setIsLoadingMore(true);
+    } else {
+      setIsLoading(true);
+    }
+
+    try {
+      const response = await songsAPI.getSongs(page, 20);
+      if (response.success && response.data && response.data.items) {
+        const mappedSongs = response.data.items.map(mapApiSongToDisplay);
+        
+        if (append) {
+          // Append vào danh sách hiện tại
+          setSongs(prev => [...prev, ...mappedSongs]);
+        } else {
+          // Replace danh sách (lần load đầu)
+          setSongs(mappedSongs);
+        }
+
+        // Update pagination state
+        setHasNextPage(response.data.hasNextPage);
+        setCurrentPage(page);
+      } else {
+        console.error("Failed to fetch songs:", response.message);
+        if (!append) {
+          setSongs([]);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching songs:", error);
+      if (!append) {
+        setSongs([]);
+      }
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  }, []);
+
+  // Load songs lần đầu
+  useEffect(() => {
+    fetchSongs(1, false);
+  }, [fetchSongs]);
+
+  // Load more songs khi đạt đến bài hát thứ 15
+  useEffect(() => {
+    // Kiểm tra nếu đang ở bài hát thứ 15 và còn trang tiếp theo
+    if (currentIndex >= 14 && hasNextPage && !isLoadingMore && !isLoading) {
+      const nextPage = currentPage + 1;
+      fetchSongs(nextPage, true);
+    }
+  }, [currentIndex, hasNextPage, isLoadingMore, isLoading, currentPage, fetchSongs]);
+
+  // Initialize audio element
+  useEffect(() => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+      audioRef.current.crossOrigin = "anonymous";
+      audioRef.current.addEventListener("ended", () => {
+        nextSong();
+      });
+    }
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+      }
+    };
+  }, []);
+
+  // Load and only autoplay if user has interacted
+  useEffect(() => {
+    if (!currentSong || !audioRef.current) return;
+  
+    audioRef.current.crossOrigin = "anonymous";
+    audioRef.current.src = currentSong.audioUrl;
+    audioRef.current.load();
+  
+    const tryPlay = async () => {
+      try {
+        audioRef.current!.muted = isMuted;
+        await audioRef.current!.play();
+        setIsPlaying(true);
+      } catch (err) {
+        // Nếu bị chặn vì chưa có tương tác và đang không mute, thử bật mute rồi play lại
+        if (!isMuted) {
+          try {
+            audioRef.current!.muted = true;
+            await audioRef.current!.play();
+            setIsPlaying(true);
+          } catch {
+            setIsPlaying(false);
+          }
+        } else {
+          setIsPlaying(false);
+        }
+      }
+    };
+  
+    tryPlay();
+  
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+  }, [currentSong, isMuted, hasInteracted]);
+
+  // Handle play/pause
+  useEffect(() => {
+    if (!audioRef.current) return;
+
+    if (isPlaying) {
+      audioRef.current.play().catch((error) => {
+        console.error("Error playing audio:", error);
+        setIsPlaying(false);
+      });
+    } else {
+      audioRef.current.pause();
+    }
+  }, [isPlaying]);
+
+  // Handle mute
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.muted = isMuted || !hasInteracted;
+    }
+  }, [isMuted, hasInteracted]);
 
   // Minimum distance for swipe
   const minSwipeDistance = 50;
 
-  // Auto play next song after 30 seconds (simulate song duration)
-  useEffect(() => {
-    if (isPlaying) {
-      const timer = setTimeout(() => {
-        nextSong();
-      }, 30000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [isPlaying, currentIndex]);
-
   const nextSong = useCallback(() => {
-    if (isProcessingRef.current || isTransitioning || hasSwiped) return;
+    if (isProcessingRef.current || isTransitioning || hasSwiped || songs.length === 0) return;
     
     isProcessingRef.current = true;
     setIsTransitioning(true);
     setHasSwiped(true);
     
-    setCurrentIndex((prev) => (prev + 1) % mockSongs.length);
+    setCurrentIndex((prev) => {
+      const nextIndex = (prev + 1) % songs.length;
+      return nextIndex;
+    });
     
     setTimeout(() => {
       setIsTransitioning(false);
       setHasSwiped(false);
       isProcessingRef.current = false;
     }, 600);
-  }, [isTransitioning, hasSwiped]);
+  }, [isTransitioning, hasSwiped, songs.length]);
 
   const prevSong = useCallback(() => {
-    if (isProcessingRef.current || isTransitioning || hasSwiped) return;
+    if (isProcessingRef.current || isTransitioning || hasSwiped || songs.length === 0) return;
     
     isProcessingRef.current = true;
     setIsTransitioning(true);
     setHasSwiped(true);
     
-    setCurrentIndex((prev) => (prev - 1 + mockSongs.length) % mockSongs.length);
+    setCurrentIndex((prev) => (prev - 1 + songs.length) % songs.length);
     
     setTimeout(() => {
       setIsTransitioning(false);
       setHasSwiped(false);
       isProcessingRef.current = false;
     }, 600);
-  }, [isTransitioning, hasSwiped]);
+  }, [isTransitioning, hasSwiped, songs.length]);
 
   // Touch handlers
   const onTouchStart = (e: React.TouchEvent) => {
@@ -103,47 +270,41 @@ export default function Home() {
   const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
     
-    // Chặn hoàn toàn nếu đang processing
     if (isProcessingRef.current || isTransitioning || hasSwiped) return;
 
-    // Tích lũy deltaY
     wheelAccumulatorRef.current += e.deltaY;
     
-    // Clear timeout cũ nếu có
     if (wheelTimeoutRef.current) {
       clearTimeout(wheelTimeoutRef.current);
     }
     
-    // Set timeout ngắn để reset accumulator nếu không có wheel event nào nữa
     wheelTimeoutRef.current = setTimeout(() => {
       wheelAccumulatorRef.current = 0;
     }, 150);
 
-    // Kiểm tra threshold
     if (Math.abs(wheelAccumulatorRef.current) >= wheelThreshold) {
       if (wheelAccumulatorRef.current > 0) {
         nextSong();
       } else {
         prevSong();
       }
-      // Reset accumulator sau khi trigger
       wheelAccumulatorRef.current = 0;
     }
   }, [isTransitioning, hasSwiped, nextSong, prevSong]);
 
-  // Add wheel event listener
-  useEffect(() => {
-    const container = containerRef.current;
-    if (container) {
-      container.addEventListener('wheel', handleWheel, { passive: false });
-      return () => {
-        container.removeEventListener('wheel', handleWheel);
-        if (wheelTimeoutRef.current) {
-          clearTimeout(wheelTimeoutRef.current);
-        }
-      };
-    }
-  }, [handleWheel]);
+    // Add wheel event listener
+    useEffect(() => {
+      const container = containerRef.current;
+      if (container) {
+        container.addEventListener('wheel', handleWheel, { passive: false });
+        return () => {
+          container.removeEventListener('wheel', handleWheel);
+          if (wheelTimeoutRef.current) {
+            clearTimeout(wheelTimeoutRef.current);
+          }
+        };
+      }
+    }, [handleWheel]);
 
   // Mouse drag handlers
   const [mouseStart, setMouseStart] = useState<number | null>(null);
@@ -192,10 +353,15 @@ export default function Home() {
       if (wheelTimeoutRef.current) {
         clearTimeout(wheelTimeoutRef.current);
       }
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
     };
   }, []);
 
   const handleLike = () => {
+    if (!currentSong) return;
     setLikedSongs(prev => {
       const newSet = new Set(prev);
       if (newSet.has(currentSong.id)) {
@@ -208,6 +374,7 @@ export default function Home() {
   };
 
   const handleSave = () => {
+    if (!currentSong) return;
     setSavedSongs(prev => {
       const newSet = new Set(prev);
       if (newSet.has(currentSong.id)) {
@@ -220,6 +387,7 @@ export default function Home() {
   };
 
   const handleFollow = () => {
+    if (!currentSong) return;
     setFollowing(prev => {
       const newSet = new Set(prev);
       if (newSet.has(currentSong.id)) {
@@ -232,6 +400,7 @@ export default function Home() {
   };
 
   const handleShare = () => {
+    if (!currentSong) return;
     if (navigator.share) {
       navigator.share({
         title: currentSong.songTitle,
@@ -239,17 +408,60 @@ export default function Home() {
         url: window.location.href,
       });
     } else {
-      // Fallback: copy to clipboard
       navigator.clipboard.writeText(`${currentSong.songTitle} - @${currentSong.artistName}`);
       alert("Link đã được copy vào clipboard!");
     }
   };
 
   const handleComment = () => {
-    // Có thể mở modal comment hoặc redirect đến trang comment
     alert("Chức năng bình luận sẽ được phát triển!");
   };
 
+  const handleTogglePlay = useCallback(() => {
+    if (!audioRef.current) return;
+
+    // Mark that the user has interacted to satisfy autoplay policies
+    if (!hasInteracted) {
+      setHasInteracted(true);
+    }
+
+    try {
+      if (audioRef.current.paused) {
+        // Ensure correct mute state before playing. During user gesture,
+        // don't rely on possibly-stale hasInteracted; use isMuted only.
+        audioRef.current.muted = isMuted;
+        audioRef.current.volume = 1;
+        audioRef.current
+          .play()
+          .then(() => setIsPlaying(true))
+          .catch((err) => {
+            console.error("Error playing audio on user gesture:", err);
+            setIsPlaying(false);
+          });
+      } else {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      }
+    } catch (err) {
+      console.error("Play/pause error:", err);
+    }
+  }, [isMuted, hasInteracted]);
+
+  if (isLoading) {
+    return (
+      <div className="relative h-screen w-full overflow-hidden flex items-center justify-center">
+        <div className="text-foreground">Đang tải danh sách bài hát...</div>
+      </div>
+    );
+  }
+
+  if (songs.length === 0) {
+    return (
+      <div className="relative h-screen w-full overflow-hidden flex items-center justify-center">
+        <div className="text-foreground">Không có bài hát nào.</div>
+      </div>
+    );
+  }
   return (
     <div 
       ref={containerRef}
@@ -274,12 +486,13 @@ export default function Home() {
         }}
       >
         {/* Render tất cả các bài hát */}
-        {mockSongs.map((song, index) => (
+        {songs.map((song, index) => (
           <div key={song.id} className="h-screen w-full">
             <NowPlayingCard
               thumbnail={song.thumbnail}
               artistName={song.artistName}
               songTitle={song.songTitle}
+              genreName={song.genreName}
               hashtags={song.hashtags}
               musicInfo={song.musicInfo}
               likes={song.likes}
@@ -298,53 +511,21 @@ export default function Home() {
               onShare={handleShare}
               onComment={handleComment}
               onToggleMute={() => setIsMuted(!isMuted)}
-              onTogglePlay={() => setIsPlaying(!isPlaying)}
+              onTogglePlay={handleTogglePlay}
               onSwipeUp={nextSong}
               onSwipeDown={prevSong}
+              audioRef={audioRef}
             />
           </div>
         ))}
       </motion.div>
 
-      {/* Visual feedback khi đang transition
-      {isTransitioning && (
-        <div className="absolute inset-0 pointer-events-none z-50">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-            <motion.div
-              className="w-12 h-12 bg-white/20 rounded-full backdrop-blur-sm flex items-center justify-center"
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 0.6, repeat: Infinity }}
-            >
-              <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            </motion.div>
-          </div>
+      {/* Loading indicator khi đang load thêm */}
+      {isLoadingMore && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 bg-black/50 backdrop-blur-sm rounded-full px-4 py-2 text-white text-sm">
+          Đang tải thêm bài hát...
         </div>
-      )} */}
-
-      {/* Navigation dots indicator
-      <div className="absolute right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-2">
-        {mockSongs.map((_, index) => (
-          <motion.button
-            key={index}
-            onClick={() => {
-              if (!isTransitioning) {
-                setCurrentIndex(index);
-              }
-            }}
-            className={`w-2 h-2 rounded-full transition-colors ${
-              index === currentIndex ? 'bg-white' : 'bg-white/30'
-            }`}
-            whileHover={{ scale: 1.2 }}
-            whileTap={{ scale: 0.9 }}
-            disabled={isTransitioning}
-          />
-        ))}
-      </div>
-
-      {/* Song counter *
-      <div className="absolute bottom-6 left-6 z-40 bg-black/50 backdrop-blur-sm rounded-full px-3 py-1 text-white text-sm">
-        {currentIndex + 1} / {mockSongs.length}
-      </div> */}
+      )}
     </div>
   );
 }

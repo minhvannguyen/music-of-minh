@@ -24,7 +24,7 @@ const menuItems = [
   { label: "Tải lên", icon: <PlusSquare size={25} />, href: "/upload" },
   { label: "Thư viện", icon: <Album size={25} />, href: "/library" },
   { label: "Thông báo", icon: <Bell size={25} />, isNotification: true },
-  { label: "Hồ sơ", icon: <User size={25} />, href: "/profile" },
+  // { label: "Hồ sơ", icon: <User size={25} />, href: "/profile" },
 ];
 
 export default function Sidebar() {
