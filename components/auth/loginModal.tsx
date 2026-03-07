@@ -6,7 +6,7 @@ import { useTheme } from "@/contexts/themeContext";
 import { useGoogleIdentity } from "@/hooks/useGoogleIdentity";
 import { toast } from "sonner";
 import { useRef, useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api } from "@/lib/api/authApi";
 import axios from "axios";
 import { Loader2 } from "lucide-react";
 

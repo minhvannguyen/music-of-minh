@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { authAPI } from "@/lib/api";
+import { authAPI } from "@/lib/api/authApi";
 
 // Define error type for API responses
 interface ApiError {

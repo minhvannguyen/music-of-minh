@@ -4,18 +4,46 @@ import { useState, useEffect } from "react";
 import { ProfileFilters } from "@/mock/profileData";
 import RenderSongList from "@/components/cards/renderSongList";
 import CreatePlaylistDialog from "@/components/cards/PlaylistDialog";
-import { songsAPI } from "@/lib/api";
-import { Song, SongApiResponse } from "@/types/song";
+import { songsAPI } from "@/lib/api/songApi";
+import { playlistAPI } from "@/lib/api/playlistApi";
+import { SongApiResponse } from "@/types/song";
 import { toast } from "sonner";
 import { useAuthContext } from "@/contexts/authContext";
 import { useRouter } from "next/navigation";
+import { Playlist } from "@/types/playList";
+import { useSongContext } from "@/contexts/songContext";
+import { useFavoriteContext } from "@/contexts/favoriteContext";
+import { usePlayListContext } from "@/contexts/playListContext";
+import RenderPlayList from "@/components/cards/renderPlayList";
+import PlaylistDetail from "@/components/PlaylistDetail";
 
 export default function Library() {
-  const [activeFilter, setActiveFilter] = useState("playlistCreated");
-  const [songs, setSongs] = useState<Song[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const { isLoggedIn, user } = useAuthContext(); // Thêm user vào đây
   const router = useRouter();
+  const { user, isLoading: authLoading, isLoggedIn } = useAuthContext();
+
+  const { songs: contextSongs, isLoading: songsLoading } = useSongContext();
+  const {
+    favoriteSongs,
+    isLoading: favoritesLoading,
+    refreshFavorites,
+  } = useFavoriteContext();
+  const { playlists, isLoading: playlistsLoading } = usePlayListContext();
+
+  const [activeFilter, setActiveFilter] = useState("songUpload");
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+  const [apiSongs, setApiSongs] = useState<SongApiResponse[]>([]);
+  const [isLoadingApiSongs, setIsLoadingApiSongs] = useState(false);
+  const [isLoadingApiPlaylists, setIsLoadingApiPlaylists] = useState(false);
+  const [apiPlaylists, setApiPlaylists] = useState<Playlist[]>([]);
+  const [savedPlaylists, setSavedPlaylists] = useState<Playlist[]>([]);
+  const [isLoadingSavedPlaylists, setIsLoadingSavedPlaylists] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const pageSize = 10; // Số bài hát mỗi trang
 
   // Helper function để build full URL
   const buildFullUrl = (path: string): string => {
@@ -63,72 +91,151 @@ export default function Library() {
     }
   };
 
-  // Map API response to Song format
-  const mapApiSongToSong = (apiSong: SongApiResponse): Song => {
-    return {
-      id: apiSong.id,
-      thumbnail: buildFullUrl(apiSong.coverUrl) || "",
-      artistName: apiSong.artistName,
-      songTitle: apiSong.title,
-      genre: apiSong.genreNames && apiSong.genreNames.length > 0 
-        ? apiSong.genreNames.join(", ") 
-        : undefined, // Join array thành string
-      likes: 0,
-      reposts: 0,
-      plays: apiSong.views || 0,
-      comments: 0,
-      duration: apiSong.duration ? formatDuration(apiSong.duration) : undefined,
-      uploadTime: formatUploadTime(apiSong.uploadedAt),
-      waveform: [],
-    };
+  const refreshPlaylists = async () => {
+    if (!isLoggedIn || !user?.id) {
+      setApiPlaylists([]);
+      setTotalPages(1);
+      setTotalItems(0);
+      return;
+    }
+
+    setIsLoadingApiPlaylists(true);
+
+    try {
+      const response = await playlistAPI.getPlaylistsByUser(user.id);
+
+      if (response.status === 200 && Array.isArray(response.data)) {
+        const mappedPlaylists = response.data;
+        setApiPlaylists(mappedPlaylists);
+        setTotalPages(1);
+        setTotalItems(response.data.length);
+      } else {
+        console.error("Failed to fetch playlists:", response.message);
+        setApiPlaylists([]);
+        setTotalPages(1);
+        setTotalItems(0);
+      }
+    } catch (error) {
+      console.error("Error fetching playlists:", error);
+      setApiPlaylists([]);
+      setTotalPages(1);
+      setTotalItems(0);
+    } finally {
+      setIsLoadingApiPlaylists(false);
+    }
   };
 
-  // Fetch songs when filter is songFavorite or songUpload
-  useEffect(() => {
-    if (activeFilter === "songFavorite" || activeFilter === "songUpload") {
-      const fetchSongs = async () => {
-        if (!isLoggedIn || !user?.id) {
-          setSongs([]);
-          return;
-        }
-
-        setIsLoading(true);
-        try {
-          if (activeFilter === "songUpload") {
-            // Dùng API GetSongsByArtist cho bài hát của chính user
-            const response = await songsAPI.getSongsByArtist(user.id);
-            if (response.success && response.data) {
-              const mappedSongs = response.data.map(mapApiSongToSong);
-              setSongs(mappedSongs);
-            } else {
-              console.error("Failed to fetch songs:", response.message);
-              setSongs([]);
-            }
-          } else {
-            // songFavorite - giữ nguyên logic cũ nếu cần
-            const response = await songsAPI.getSongs(1, 100);
-            if (response.success && response.data && response.data.items) {
-              const mappedSongs = response.data.items.map(mapApiSongToSong);
-              setSongs(mappedSongs);
-            } else {
-              console.error("Failed to fetch songs:", response.message);
-              setSongs([]);
-            }
-          }
-        } catch (error) {
-          console.error("Error fetching songs:", error);
-          setSongs([]);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      fetchSongs();
-    } else {
-      // Reset songs khi không phải filter bài hát
-      setSongs([]);
+  const refreshSavedPlaylists = async () => {
+    if (!isLoggedIn) {
+      setSavedPlaylists([]);
+      return;
     }
-  }, [activeFilter, isLoggedIn, user]); // Thay user?.id bằng user
+
+    setIsLoadingSavedPlaylists(true);
+
+    try {
+      const data = await playlistAPI.getSavedPlaylists();
+
+      if (Array.isArray(data)) {
+        setSavedPlaylists(data);
+      } else {
+        setSavedPlaylists([]);
+      }
+    } catch (error) {
+      console.error("Error fetching saved playlists:", error);
+      setSavedPlaylists([]);
+    } finally {
+      setIsLoadingSavedPlaylists(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeFilter === "playlistCreated") {
+      refreshPlaylists();
+    } else {
+      setApiPlaylists([]);
+      setCurrentPage(1);
+      setTotalPages(1);
+      setTotalItems(0);
+    }
+  }, [activeFilter, isLoggedIn, user?.id]);
+
+  useEffect(() => {
+    if (activeFilter === "playlistSaved") {
+      refreshSavedPlaylists();
+    }
+  }, [activeFilter]);
+
+  const refreshSongs = async () => {
+    if (!isLoggedIn || !user?.id) {
+      setApiSongs([]);
+      return;
+    }
+
+    setIsLoadingApiSongs(true);
+    try {
+      const response = await songsAPI.getSongsByArtist(user.id);
+
+      if (response.success && response.data) {
+        setApiSongs(response.data);
+
+        setTotalPages(1);
+        setTotalItems(response.data.length);
+      } else {
+        console.error("Failed to fetch songs:", response.message);
+        setApiSongs([]);
+        setTotalPages(1);
+        setTotalItems(0);
+      }
+    } catch (error) {
+      console.error("Error fetching songs:", error);
+      setApiSongs([]);
+      setTotalPages(1);
+      setTotalItems(0);
+    } finally {
+      setIsLoadingApiSongs(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeFilter === "songUpload") {
+      refreshSongs();
+    } else {
+      setApiSongs([]);
+      setCurrentPage(1);
+      setTotalPages(1);
+      setTotalItems(0);
+    }
+  }, [activeFilter, isLoggedIn, user?.id]);
+
+  useEffect(() => {
+    if (activeFilter === "songFavorite") {
+      refreshFavorites();
+    }
+  }, [activeFilter, refreshFavorites]);
+
+  // Lấy dữ liệu songs dựa trên filter
+  let currentSongs: SongApiResponse[] = [];
+  if (activeFilter === "songFavorite") {
+    currentSongs = favoriteSongs;
+  } else if (activeFilter === "songUpload") {
+    currentSongs = apiSongs;
+  } else {
+    currentSongs = contextSongs;
+  }
+
+  const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(
+    null,
+  );
+  // Nếu đang xem chi tiết playlist
+  if (selectedPlaylist) {
+    return (
+      <PlaylistDetail
+        playlist={selectedPlaylist}
+        onBack={() => setSelectedPlaylist(null)}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -137,7 +244,7 @@ export default function Library() {
 
         {/* Main Content */}
         <div className="flex-1 p-6">
-          <div className="bg-background p-6 flex justify-between">
+          <div className="bg-background p-6 flex justify-between mx-12">
             {/* Filters */}
             <div className="flex justify-between">
               {ProfileFilters.map((filter) => (
@@ -160,13 +267,17 @@ export default function Library() {
           <div className="space-y-2">
             {activeFilter === "songFavorite" && (
               <>
-                {isLoading ? (
+                {favoritesLoading ? (
                   <div className="text-center py-8 text-muted-foreground">
-                    Đang tải danh sách bài hát...
+                    Đang tải danh sách bài hát yêu thích...
                   </div>
-                ) : songs.length > 0 ? (
-                  songs.map((song) => (
-                    <RenderSongList key={song.id} song={song} />
+                ) : favoriteSongs.length > 0 ? (
+                  favoriteSongs.map((song) => (
+                    <RenderSongList
+                      key={song.id}
+                      song={song}
+                      songs={favoriteSongs}
+                    />
                   ))
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
@@ -178,14 +289,23 @@ export default function Library() {
 
             {activeFilter === "songUpload" && (
               <>
-                {isLoading ? (
+                {isLoadingApiSongs ? (
                   <div className="text-center py-8 text-muted-foreground">
                     Đang tải danh sách bài hát...
                   </div>
-                ) : songs.length > 0 ? (
-                  songs.map((song) => (
-                    <RenderSongList key={song.id} song={song} />
-                  ))
+                ) : currentSongs.length > 0 ? (
+                  <>
+                    {currentSongs.map((song) => (
+                      <RenderSongList
+                        key={song.id}
+                        song={song}
+                        songs={currentSongs}
+                        refreshSongs={refreshSongs}
+                      />
+                    ))}
+
+                    {/* Bỏ pagination vì GetSongsByArtist trả về tất cả bài hát */}
+                  </>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     Chưa có bài hát nào được tải lên
@@ -195,16 +315,17 @@ export default function Library() {
             )}
 
             {activeFilter === "playlistCreated" && (
-              <div className="space-y-4">
+              <div>
                 {/* Ô tạo playlist mới */}
                 <CreatePlaylistDialog
+                  mode="create"
                   onCreate={(data) => {
                     console.log("Playlist mới:", data);
                   }}
                 >
                   <div
                     onClick={() => console.log("Open create playlist modal")}
-                    className="flex items-center gap-4 p-2 rounded-xl cursor-pointer hover:bg-muted transition-all"
+                    className="flex items-center mx-16 gap-4 p-2 rounded-xl cursor-pointer hover:bg-muted transition-all"
                   >
                     {/* Ảnh giả lập (ô vuông có dấu +) */}
                     <div className="w-28 h-28 ml-2 flex items-center justify-center rounded-lg bg-muted-foreground/10 border border-muted-foreground/20">
@@ -226,9 +347,51 @@ export default function Library() {
                 </CreatePlaylistDialog>
 
                 {/* TODO: Load playlists từ API */}
-                <div className="text-center py-8 text-muted-foreground">
-                  Chưa có playlist nào
-                </div>
+                {isLoadingApiPlaylists ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Đang tải danh sách playlist...
+                  </div>
+                ) : apiPlaylists.length > 0 ? (
+                  apiPlaylists.map((playlist) => (
+                    <RenderPlayList
+                      key={playlist.id}
+                      playlist={playlist}
+                      refreshPlaylists={refreshPlaylists}
+                      onOpenPlaylist={(playlist) =>
+                        setSelectedPlaylist(playlist)
+                      }
+                    />
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Chưa có playlist nào được tạo
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeFilter === "playlistSaved" && (
+              <div>
+                {isLoadingSavedPlaylists ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Đang tải playlist đã lưu...
+                  </div>
+                ) : savedPlaylists.length > 0 ? (
+                  savedPlaylists.map((playlist) => (
+                    <RenderPlayList
+                      key={playlist.id}
+                      playlist={playlist}
+                      refreshPlaylists={refreshSavedPlaylists}
+                      onOpenPlaylist={(playlist) =>
+                        setSelectedPlaylist(playlist)
+                      }
+                    />
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    Bạn chưa lưu playlist nào
+                  </div>
+                )}
               </div>
             )}
           </div>

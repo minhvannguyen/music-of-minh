@@ -1,12 +1,13 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
-import { Song } from "@/types/song";
+import { Song, SongApiResponse } from "@/types/song";
 import { useAuthContext } from "@/contexts/authContext";
 import { MockProfile } from "@/mock/profileData";
-
+import { songsAPI } from "@/lib/api/songApi";
+import { playlistAPI } from "@/lib/api/playlistApi";
 interface SongContextType {
-  songs: Song[];
+  songs:  SongApiResponse[];
   isLoading: boolean;
   refreshSongs: () => Promise<void>;
 }
@@ -14,8 +15,8 @@ interface SongContextType {
 const SongContext = createContext<SongContextType | undefined>(undefined);
 
 export function SongProvider({ children }: { children: ReactNode }) {
-  const { isLoggedIn } = useAuthContext();
-  const [songs, setSongs] = useState<Song[]>([]);
+  const { isLoggedIn, user } = useAuthContext();
+  const [songs, setSongs] = useState<SongApiResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchSongs = useCallback(async () => {
@@ -27,16 +28,10 @@ export function SongProvider({ children }: { children: ReactNode }) {
 
     setIsLoading(true);
     try {
-      const url = `${process.env.NEXT_PUBLIC_API_BASE_URL ?? ""}/api/user/songs`;
-      const res = await fetch(url, {
-        credentials: "include",
-        cache: "no-store",
-      });
-
-      if (res.ok) {
-        const json = await res.json();
-        const songsData = json?.data ?? json?.songs ?? json ?? [];
-        setSongs(Array.isArray(songsData) ? songsData : []);
+      const res = await songsAPI.getSongsByArtist(user?.id || 0);
+      
+            if (res?.success && Array.isArray(res.data)) {
+              setSongs(res.data);
       } else {
         // Fallback về mock data nếu API không có
         setSongs(MockProfile.songs);

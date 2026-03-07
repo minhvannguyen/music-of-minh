@@ -1,194 +1,476 @@
 "use client";
 
-import React, { createContext, useContext, useMemo, useRef, useState, useEffect, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  ReactNode,
+  useCallback,
+} from "react";
+import { SongApiResponse } from "@/types/song";
+import { songsAPI } from "@/lib/api/songApi";
+import { playlistAPI } from "@/lib/api/playlistApi";
 
-export type PlayerTrack = {
-  id: number;
-  songTitle: string;
-  artistName: string;
-  thumbnail?: string;
-  audioUrl: string;
-};
+export type RepeatMode = "none" | "one" | "all";
+export type PlaylistSource = "home" | "explore" | "playlist" | null;
 
-type RepeatMode = "off" | "one" | "all";
-
-type PlayerContextValue = {
-  // state
-  queue: PlayerTrack[];
+interface PlayerContextType {
+  playlist: SongApiResponse[];
   currentIndex: number;
-  current?: PlayerTrack;
+  currentSong: SongApiResponse | null;
+
   isPlaying: boolean;
-  isMuted: boolean;
-  duration: number;
-  currentTime: number;
-  volume: number; // 0..1
-  repeat: RepeatMode;
-  // refs
-  audioRef: React.MutableRefObject<HTMLAudioElement | null>;
-  // actions
-  setQueue: (tracks: PlayerTrack[], startIndex?: number) => void;
-  playAt: (index: number) => void;
-  play: () => void;
+  isLoading: boolean;
+
+  play: (index?: number) => void;
   pause: () => void;
   togglePlay: () => void;
-  next: () => void;
-  prev: () => void;
-  seek: (time: number) => void;
+
+  nextSong: () => void;
+  prevSong: () => void;
+
+  appendToPlaylist: (songs: SongApiResponse[]) => void;
+  playFromPlaylist: (
+    songs: SongApiResponse[],
+    index: number,
+    playlistId?: number,
+  ) => void;
+  forcePlaylist: (songs: SongApiResponse[], startIndex?: number) => void;
+
+  progress: number;
+  duration: number;
+  seekTo: (time: number) => void;
+
+  volume: number;
   setVolume: (v: number) => void;
-  setMuted: (m: boolean) => void;
-  toggleMuted: () => void;
-  setRepeat: (r: RepeatMode) => void;
-};
+  isMuted: boolean;
+  toggleMute: () => void;
 
-const PlayerContext = createContext<PlayerContextValue | null>(null);
+  shuffle: boolean;
+  toggleShuffle: () => void;
 
-export function PlayerProvider({ children }: { children: React.ReactNode }) {
+  repeat: RepeatMode;
+  setRepeat: (mode: RepeatMode) => void;
+
+  audioRef: React.RefObject<HTMLAudioElement | null>;
+}
+
+const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
+
+export function PlayerProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const [queue, setQueueState] = useState<PlayerTrack[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [volume, setVolumeState] = useState(1);
-  const [repeat, setRepeat] = useState<RepeatMode>("off");
-
-  const current = queue[currentIndex];
-
-  // init single audio element
   useEffect(() => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio();
-      audioRef.current.crossOrigin = "anonymous";
-      audioRef.current.preload = "auto";
+    const audio = new Audio();
+    audioRef.current = audio;
 
-      const a = audioRef.current;
-      const onLoaded = () => setDuration(a.duration || 0);
-      const onTime = () => setCurrentTime(a.currentTime || 0);
-      const onEnded = () => {
-        if (repeat === "one") {
-          a.currentTime = 0;
-          a.play().catch(() => {});
-          return;
-        }
-        if (currentIndex < queue.length - 1) {
-          setCurrentIndex((i) => i + 1);
-        } else if (repeat === "all" && queue.length > 0) {
-          setCurrentIndex(0);
-        } else {
-          setIsPlaying(false);
-        }
-      };
+    // optional: preload
+    audio.preload = "auto";
 
-      a.addEventListener("loadedmetadata", onLoaded);
-      a.addEventListener("timeupdate", onTime);
-      a.addEventListener("ended", onEnded);
-
-      return () => {
-        a.removeEventListener("loadedmetadata", onLoaded);
-        a.removeEventListener("timeupdate", onTime);
-        a.removeEventListener("ended", onEnded);
-        a.pause();
-        a.src = "";
-      };
-    }
-  }, [currentIndex, queue.length, repeat]);
-
-  // load current track
-  useEffect(() => {
-    const a = audioRef.current;
-    if (!a || !current) return;
-    a.src = current.audioUrl;
-    a.muted = isMuted;
-    a.volume = volume;
-    a.load();
-
-    // autoplay current if already in playing state
-    if (isPlaying) {
-      a.play().catch(() => setIsPlaying(false));
-    }
-  }, [current?.audioUrl]);
-
-  // react to play/pause state
-  useEffect(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    if (isPlaying) {
-      a.play().catch(() => setIsPlaying(false));
-    } else {
-      a.pause();
-    }
-  }, [isPlaying]);
-
-  // react to mute/volume
-  useEffect(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    a.muted = isMuted;
-  }, [isMuted]);
-
-  useEffect(() => {
-    const a = audioRef.current;
-    if (!a) return;
-    a.volume = Math.max(0, Math.min(1, volume));
-  }, [volume]);
-
-  const setQueue = useCallback((tracks: PlayerTrack[], startIndex = 0) => {
-    setQueueState(tracks);
-    setCurrentIndex(Math.max(0, Math.min(tracks.length - 1, startIndex)));
+    return () => {
+      audio.pause();
+      audio.src = "";
+      audioRef.current = null;
+    };
   }, []);
 
-  const playAt = useCallback((index: number) => {
-    if (index < 0 || index >= queue.length) return;
-    setCurrentIndex(index);
-    setIsPlaying(true);
-  }, [queue.length]);
+  const [playlist, setPlaylist] = useState<SongApiResponse[]>([]);
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [currentSong, setCurrentSong] = useState<SongApiResponse | null>(null);
 
-  const play = useCallback(() => setIsPlaying(true), []);
-  const pause = useCallback(() => setIsPlaying(false), []);
-  const togglePlay = useCallback(() => setIsPlaying((p) => !p), []);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const next = useCallback(() => {
-    if (queue.length === 0) return;
-    if (currentIndex < queue.length - 1) {
-      setCurrentIndex((i) => i + 1);
-      setIsPlaying(true);
-    } else if (repeat === "all") {
-      setCurrentIndex(0);
-      setIsPlaying(true);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const [volume, setVolumeState] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+
+  const [shuffle, setShuffle] = useState(false);
+  const [repeat, setRepeat] = useState<RepeatMode>("none");
+
+  const [isBusy, setIsBusy] = useState(false); // lock chuyển bài
+
+  const playFromPlaylist = async (
+    songs: SongApiResponse[],
+    index: number,
+    playlistId?: number,
+  ) => {
+    const song = songs[index];
+    if (!song || !audioRef.current) return;
+
+    setHasCountedView(false);
+
+    if (playlistId) {
+      setCurrentPlaylistId(playlistId);
+      setHasCountedPlaylistView(false);
     }
-  }, [currentIndex, queue.length, repeat]);
 
-  const prev = useCallback(() => {
-    if (queue.length === 0) return;
-    setCurrentIndex((i) => (i - 1 + queue.length) % queue.length);
-    setIsPlaying(true);
-  }, [queue.length]);
+    const audio = audioRef.current;
 
-  const seek = useCallback((time: number) => {
-    const a = audioRef.current;
-    if (!a || Number.isNaN(time)) return;
-    a.currentTime = Math.max(0, Math.min(duration || a.duration || 0, time));
-    setCurrentTime(a.currentTime);
-  }, [duration]);
+    try {
+      setIsLoading(true);
+      setIsPlaying(false);
 
-  const setVolume = useCallback((v: number) => setVolumeState(Math.max(0, Math.min(1, v))), []);
-  const setMuted = useCallback((m: boolean) => setIsMuted(m), []);
-  const toggleMuted = useCallback(() => setIsMuted((m) => !m), []);
+      // 1️⃣ reset audio cũ
+      audio.pause();
+      audio.currentTime = 0;
 
-  const value = useMemo<PlayerContextValue>(() => ({
-    queue, currentIndex, current,
-    isPlaying, isMuted, duration, currentTime, volume, repeat,
+      // 2️⃣ update state
+      setPlaylist(songs);
+      setCurrentIndex(index);
+      setCurrentSong(song);
+
+      // 3️⃣ set src ĐÚNG URL
+      audio.src = buildFullUrl(song.fileUrl);
+      audio.volume = isMuted ? 0 : volume;
+
+      // 4️⃣ BẮT BUỘC
+      audio.load();
+
+      // 5️⃣ đợi audio ready
+      await new Promise<void>((resolve, reject) => {
+        const onReady = () => {
+          audio.removeEventListener("canplaythrough", onReady);
+          resolve();
+        };
+        const onError = () => {
+          audio.removeEventListener("error", onError);
+          reject();
+        };
+
+        audio.addEventListener("canplaythrough", onReady);
+        audio.addEventListener("error", onError);
+      });
+
+      // 6️⃣ play
+      await audio.play();
+      setIsPlaying(true);
+    } catch (err) {
+      console.error("playFromPlaylist error:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const appendToPlaylist = (songs: SongApiResponse[]) => {
+    setPlaylist((prev) => {
+      // tránh append trùng (phòng API trả overlap)
+      const existingIds = new Set(prev.map((s) => s.id));
+      const unique = songs.filter((s) => !existingIds.has(s.id));
+      return [...prev, ...unique];
+    });
+  };
+
+  /** =========================
+   *  ▶ PLAY FUNCTION
+   *  ========================= */
+  const buildFullUrl = (url: string) => {
+    if (url.startsWith("http")) return url;
+    return `${process.env.NEXT_PUBLIC_API_BASE_URL}${url}`;
+  };
+
+  const play = async (index?: number) => {
+    const audio = audioRef.current;
+
+    setHasCountedView(false);
+    if (!audio) return;
+
+    try {
+      setIsLoading(true);
+
+      // ========================
+      // 1️⃣ RESUME (pause → play)
+      // ========================
+      if (
+        index === undefined &&
+        currentSong &&
+        audio.src &&
+        audio.currentTime > 0 &&
+        audio.paused
+      ) {
+        await audio.play();
+        setIsPlaying(true);
+        return;
+      }
+
+      // ========================
+      // 2️⃣ SWITCH / FIRST PLAY
+      // ========================
+      const song =
+        index !== undefined ? playlist[index] : (currentSong ?? playlist[0]);
+
+      if (!song) return;
+
+      setCurrentSong(song);
+      if (index !== undefined) setCurrentIndex(index);
+
+      // stop old audio
+      audio.pause();
+      audio.currentTime = 0;
+
+      // set source
+      const src = buildFullUrl(song.fileUrl);
+      if (!src) throw new Error("Invalid audio source");
+
+      audio.src = src;
+      audio.load();
+
+      // wait until ready
+      await new Promise<void>((resolve) => {
+        const onCanPlay = () => {
+          audio.removeEventListener("canplay", onCanPlay);
+          resolve();
+        };
+        audio.addEventListener("canplay", onCanPlay);
+        setTimeout(resolve, 800);
+      });
+
+      await audio.play();
+      setIsPlaying(true);
+    } catch (err) {
+      console.error("playFromPlaylist error:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /** =========================
+   *  ⏸ PAUSE
+   *  ========================= */
+  const pause = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const togglePlay = () => {
+    isPlaying ? pause() : play();
+  };
+
+  /** =========================
+   *  ⏭ NEXT
+   *  ========================= */
+  const nextSong = () => {
+    if (isBusy || playlist.length === 0) return;
+
+    setIsBusy(true);
+
+    let newIndex = currentIndex;
+
+    if (shuffle) {
+      // random nhưng tránh trùng bài
+      do {
+        newIndex = Math.floor(Math.random() * playlist.length);
+      } while (newIndex === currentIndex);
+    } else {
+      if (currentIndex < playlist.length - 1) {
+        newIndex = currentIndex + 1;
+      } else if (repeat === "all") {
+        newIndex = 0;
+      } else {
+        // không repeat → hết playlist → dừng
+        setIsBusy(false);
+        return;
+      }
+    }
+
+    // update state
+    setCurrentIndex(newIndex);
+    setCurrentSong(playlist[newIndex]);
+
+    // play đúng bài
+    play(newIndex);
+
+    setTimeout(() => setIsBusy(false), 300);
+  };
+
+  /** =========================
+   *  ⏮ PREVIOUS
+   *  ========================= */
+  const prevSong = () => {
+    if (isBusy || playlist.length === 0) return;
+
+    setIsBusy(true);
+
+    let newIndex = currentIndex;
+
+    if (currentIndex > 0) {
+      newIndex = currentIndex - 1;
+    } else if (repeat === "all") {
+      newIndex = playlist.length - 1;
+    } else {
+      setIsBusy(false);
+      return;
+    }
+
+    setCurrentIndex(newIndex);
+    setCurrentSong(playlist[newIndex]);
+
+    play(newIndex);
+
+    setTimeout(() => setIsBusy(false), 300);
+  };
+
+  /** =========================
+   *  🎵 END SONG EVENT
+   *  ========================= */
+  const [hasRepeatedOne, setHasRepeatedOne] = useState(false);
+
+  const [hasCountedView, setHasCountedView] = useState(false);
+  const [currentPlaylistId, setCurrentPlaylistId] = useState<number | null>(
+    null,
+  );
+  const [hasCountedPlaylistView, setHasCountedPlaylistView] = useState(false);
+
+  const handleEnded = useCallback(() => {
+    if (repeat === "all") {
+      play(currentIndex);
+      return;
+    } else if (repeat === "one") {
+      if (!hasRepeatedOne) {
+        setHasRepeatedOne(true);
+        play(currentIndex); // lặp lại đúng 1 lần
+        return;
+      } else {
+        setHasRepeatedOne(false); // reset cho bài sau
+        nextSong(); // sang bài mới
+        return;
+      }
+    }
+    nextSong();
+  }, [repeat, hasRepeatedOne, currentIndex, nextSong]);
+
+  const forcePlaylist = (songs: SongApiResponse[], startIndex = 0) => {
+    if (songs.length === 0) return;
+
+    setPlaylist(songs);
+    setCurrentIndex(startIndex);
+    setCurrentSong(songs[startIndex]);
+
+    audioRef.current!.src = songs[startIndex].fileUrl;
+    audioRef.current!.play().catch(() => {});
+    setIsPlaying(false);
+  };
+
+  // Tạo audio element 1 lần
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const onTimeUpdate = () => {
+      setProgress(audio.currentTime);
+      if (!isNaN(audio.duration)) {
+        setDuration(audio.duration);
+      }
+
+      // Tính view: khi bài hát đã chạy được 30s hoặc 50% thời lượng thì tính là đã xem
+      if (
+        currentSong &&
+        !hasCountedView &&
+        ((audioRef.current?.currentTime &&
+          audioRef.current.currentTime >= 30) ||
+          (audioRef.current?.currentTime &&
+            audioRef.current.currentTime >=
+              (audioRef.current?.duration || 0) * 0.5))
+      ) {
+        songsAPI.incrementView(currentSong.id);
+        setHasCountedView(true);
+      }
+
+      if (
+        currentPlaylistId &&
+        audio.currentTime >= 30 &&
+        !hasCountedPlaylistView
+      ) {
+        playlistAPI.incrementView(currentPlaylistId);
+        setHasCountedPlaylistView(true);
+      }
+    };
+
+    audio.addEventListener("timeupdate", onTimeUpdate);
+    return () => audio.removeEventListener("timeupdate", onTimeUpdate);
+  }, [currentSong, hasCountedView, currentPlaylistId, hasCountedPlaylistView]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.addEventListener("ended", handleEnded);
+    return () => audio.removeEventListener("ended", handleEnded);
+  }, [handleEnded]); // <= now always fresh
+
+  /** =========================
+   *  🎚 VOLUME
+   *  ========================= */
+  const setVolume = (v: number) => {
+    setVolumeState(v);
+    if (audioRef.current) audioRef.current.volume = v;
+  };
+
+  const toggleMute = () => {
+    setIsMuted((m) => !m);
+    if (audioRef.current) audioRef.current.volume = !isMuted ? 0 : volume;
+  };
+
+  /** =========================
+   *  ⏩ SEEK
+   *  ========================= */
+  const seekTo = (time: number) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+      setProgress(time);
+    }
+  };
+
+  const value: PlayerContextType = {
+    playlist,
+    currentIndex,
+    currentSong,
+
+    isPlaying,
+    isLoading,
+
+    play,
+    pause,
+    togglePlay,
+
+    nextSong,
+    prevSong,
+
     audioRef,
-    setQueue, playAt, play, pause, togglePlay, next, prev, seek, setVolume, setMuted, toggleMuted, setRepeat,
-  }), [queue, currentIndex, current, isPlaying, isMuted, duration, currentTime, volume, repeat]);
 
-  return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;
+    appendToPlaylist,
+    playFromPlaylist,
+    forcePlaylist,
+
+    progress,
+    duration,
+    seekTo,
+
+    volume,
+    setVolume,
+    isMuted,
+    toggleMute,
+
+    shuffle,
+    toggleShuffle: () => setShuffle((s) => !s),
+
+    repeat,
+    setRepeat,
+  };
+
+  return (
+    <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>
+  );
 }
 
-export function usePlayer() {
+export const usePlayer = () => {
   const ctx = useContext(PlayerContext);
-  if (!ctx) throw new Error("usePlayer must be used within PlayerProvider");
+  if (!ctx) throw new Error("usePlayer must be inside PlayerProvider");
   return ctx;
-}
+};

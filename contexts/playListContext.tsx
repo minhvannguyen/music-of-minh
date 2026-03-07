@@ -1,71 +1,70 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
-import { PlayList } from "@/types/playList";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+  useCallback,
+} from "react";
+import { Playlist } from "@/types/playList";
 import { useAuthContext } from "@/contexts/authContext";
-import { MockProfile } from "@/mock/profileData";
-
+import { playlistAPI } from "@/lib/api/playlistApi";
 interface PlayListContextType {
-  playlists: PlayList[];
+  playlists: Playlist[];
   isLoading: boolean;
   refreshPlaylists: () => Promise<void>;
 }
 
-const PlayListContext = createContext<PlayListContextType | undefined>(undefined);
+const PlayListContext = createContext<PlayListContextType | undefined>(
+  undefined
+);
 
 export function PlayListProvider({ children }: { children: ReactNode }) {
-  const { isLoggedIn } = useAuthContext();
-  const [playlists, setPlaylists] = useState<PlayList[]>([]);
+  const { isLoggedIn, user } = useAuthContext();
+
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // -----------------------------
+  //  API fetch playlists
+  // -----------------------------
   const fetchPlaylists = useCallback(async () => {
-    if (!isLoggedIn) {
+    if (!isLoggedIn || !user?.id) {
       setPlaylists([]);
-      setIsLoading(false);
       return;
     }
 
     setIsLoading(true);
     try {
-      const url = `${process.env.NEXT_PUBLIC_API_BASE_URL ?? ""}/api/user/playlists`;
-      const res = await fetch(url, {
-        credentials: "include",
-        cache: "no-store",
-      });
+      const res = await playlistAPI.getPlaylistsByUser(user.id);
 
-      if (res.ok) {
-        const json = await res.json();
-        const playlistsData = json?.data ?? json?.playlists ?? json ?? [];
-        setPlaylists(Array.isArray(playlistsData) ? playlistsData : []);
+      if (res?.status === 200 && Array.isArray(res.data)) {
+        setPlaylists(res.data);
       } else {
-        // Fallback về mock data nếu API không có
-        setPlaylists(MockProfile.playlists);
+        console.error("API không trả về đúng định dạng:", res);
+        setPlaylists([]);
       }
     } catch (error) {
-      console.warn("Failed to fetch playlists, using mock data:", error);
-      setPlaylists(MockProfile.playlists);
+      console.error("Lỗi khi fetch playlists:", error);
+      setPlaylists([]);
     } finally {
       setIsLoading(false);
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, user?.id]);
 
+  // Fetch khi mở app + khi login thay đổi
   useEffect(() => {
     fetchPlaylists();
+  }, [fetchPlaylists]);
 
-    // Lắng nghe event để refresh
-    const onPlaylistsChanged = () => {
-      fetchPlaylists();
-    };
-
-    if (typeof window !== "undefined") {
-      window.addEventListener("playlists-changed", onPlaylistsChanged);
-    }
-
-    return () => {
-      if (typeof window !== "undefined") {
-        window.removeEventListener("playlists-changed", onPlaylistsChanged);
-      }
-    };
+  // Lắng nghe sự kiện update playlist global
+  useEffect(() => {
+    const onPlaylistsChanged = () => fetchPlaylists();
+    window.addEventListener("playlists-changed", onPlaylistsChanged);
+    return () =>
+      window.removeEventListener("playlists-changed", onPlaylistsChanged);
   }, [fetchPlaylists]);
 
   return (
@@ -81,12 +80,13 @@ export function PlayListProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// Hook sử dụng
 export function usePlayListContext() {
   const context = useContext(PlayListContext);
-  if (context === undefined) {
-    throw new Error("usePlayListContext must be used within a PlayListProvider");
+  if (!context) {
+    throw new Error(
+      "usePlayListContext must be used within a PlayListProvider"
+    );
   }
   return context;
 }
-
-

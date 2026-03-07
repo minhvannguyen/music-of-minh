@@ -3,12 +3,15 @@ import "./globals.css";
 import Sidebar from "@/components/sideBar";
 import { ThemeProvider } from "@/contexts/themeContext";
 import { AuthProvider } from "@/contexts/authContext";
-import GlobalPlayerBar from "@/components/player/GlobalPlayerBar";
 import { Toaster } from "@/components/ui/sonner";
 import { SongProvider } from "@/contexts/songContext";
 import { FavoriteProvider } from "@/contexts/favoriteContext";
 import { PlayListProvider } from "@/contexts/playListContext";
 import { FollowProvider } from "@/contexts/followContext";
+import GlobalMusicPlayer from "@/components/GlobalMusicPlayer";
+import { PlayerProvider } from "@/contexts/PlayerContext";
+import { NotificationProvider } from "@/contexts/notificationContext";
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,9 +37,14 @@ export default function RootLayout({
               <FavoriteProvider>
                 <PlayListProvider>
                   <FollowProvider>
-                    <Sidebar />
-                    <Toaster />
-                    <main className="flex-1 overflow-y-auto">{children}</main>
+                    <PlayerProvider>
+                      <GlobalMusicPlayer />
+                      <NotificationProvider>
+                      <Sidebar />
+                      <Toaster />
+                      <main className="flex-1 overflow-y-auto">{children}</main>
+                      </NotificationProvider>
+                    </PlayerProvider>
                   </FollowProvider>
                 </PlayListProvider>
               </FavoriteProvider>

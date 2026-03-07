@@ -13,7 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { songsAPI, genresAPI } from "@/lib/api";
+import { songsAPI } from "@/lib/api/songApi";
+import { genresAPI } from "@/lib/api/genreApi";
 import { useAuthContext } from "@/contexts/authContext";
 import { useRouter } from "next/navigation";
 import { CreateSongRequest } from "@/types/song";
@@ -142,6 +143,7 @@ export default function UploadPage() {
       const requestData: CreateSongRequest = {
         title: songTitle,
         artistId: user.id,
+        artistName: artistName,
         private: !isPublic,
         audioFile: file,
         coverImage: cover,
@@ -213,7 +215,7 @@ export default function UploadPage() {
                     alt="Cover preview"
                     fill
                     unoptimized
-                    className="object-cover w-full h-full"
+                    className="object-cover w-full h-full rounded-xl"
                   />
                 ) : (
                   <span className="text-gray-500 text-sm text-center">

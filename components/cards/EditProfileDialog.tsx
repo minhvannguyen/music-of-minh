@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { userAPI } from "@/lib/api";
+import { userAPI } from "@/lib/api/userApi";
 
 interface EditProfileDialogProps {
   isOpen: boolean;

@@ -2,16 +2,16 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
 import { User } from "@/types/user";
-import { Song } from "@/types/song";
-import { PlayList } from "@/types/playList";
+import { Song, SongApiResponse } from "@/types/song";
+import { Playlist } from "@/types/playList";
 import { useAuthContext } from "@/contexts/authContext";
 import { MockProfile } from "@/mock/profileData";
 
 interface ProfileContextType {
   profile: User | null;
-  songs: Song[];
-  favoriteSongs: Song[];
-  playlists: PlayList[];
+  songs: SongApiResponse[];
+  favoriteSongs: SongApiResponse[];
+  playlists: Playlist[];
   isLoading: boolean;
   refreshProfile: () => Promise<void>;
   refreshSongs: () => Promise<void>;
@@ -24,9 +24,9 @@ const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const { user: authUser, isLoggedIn } = useAuthContext();
   const [profile, setProfile] = useState<User | null>(null);
-  const [songs, setSongs] = useState<Song[]>([]);
-  const [favoriteSongs, setFavoriteSongs] = useState<Song[]>([]);
-  const [playlists, setPlaylists] = useState<PlayList[]>([]);
+  const [songs, setSongs] = useState<SongApiResponse[]>([]);
+  const [favoriteSongs, setFavoriteSongs] = useState<SongApiResponse[]>([]);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // Fetch profile data đầy đủ

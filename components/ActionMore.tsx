@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, RefObject } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Share, Copy, Download, Repeat, MoreHorizontal, Ellipsis } from "lucide-react";
+import { Share, Copy, Download, Flag, Ellipsis } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Hook giúp tự đóng popup khi click ra ngoài
 export function useClickOutside<T extends HTMLElement>(
@@ -21,16 +22,18 @@ interface ActionMoreProps {
   onShare?: () => void;
   onCopy?: () => void;
   onDownload?: () => void;
-  onRepeat?: () => void;
-  className?: string;
+  onReport?: () => void;
+  buttonClassName?: string;
+  iconClassName?: string;
 }
 
 export default function ActionMore({
   onShare,
   onCopy,
   onDownload,
-  onRepeat,
-  className = "",
+  onReport,
+  buttonClassName,
+  iconClassName,
 }: ActionMoreProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -38,18 +41,18 @@ export default function ActionMore({
   useClickOutside(menuRef , () => setOpen(false));
 
   return (
-    <div ref={menuRef} className={`relative inline-block ${className}`}>
+    <div ref={menuRef} className={`relative inline-block `}>
       {/* Nút ba chấm */}
       <motion.button
         onClick={(e) => {
           e.stopPropagation();
           setOpen((prev) => !prev);
         }}
-        className="p-3 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+        className={cn("p-3 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors", buttonClassName)}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
       >
-        <Ellipsis className="w-6 h-6 text-gray-600" />
+        <Ellipsis className={cn("w-6 h-6 text-gray-600", iconClassName)} />
       </motion.button>
 
       {/* Popup menu */}
@@ -96,12 +99,12 @@ export default function ActionMore({
               <button
                 onClick={() => {
                   setOpen(false);
-                  onRepeat?.();
+                  onReport?.();
                 }}
                 className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 transition-colors"
               >
-                <Repeat className="w-4 h-4 text-gray-500" />
-                Lặp lại
+                <Flag className="w-4 h-4 text-gray-500" />
+                Báo cáo
               </button>
             </div>
           </motion.div>

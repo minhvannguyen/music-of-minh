@@ -1,22 +1,41 @@
 export interface Song {
   id: number;
-  thumbnail?: string;
+  coverUrl?: string;
+  fileUrl?: string;
+  artistId?: number;
   artistName?: string;
-  songTitle: string;
-  genre?: string;
+  title: string;
+  genreIds?: number[];
+  genreNames?: string[];
   likes?: number;
   reposts?: number;
-  plays?: number;
+  views?: number;
   comments?: number;
   duration?: string;
-  uploadTime?: string;
+  uploadedAt?: string;
   waveform?: number[];
+  private: boolean;
+
+  
 }
 
 // Request types cho Song API
 export interface CreateSongRequest {
   title: string;
   artistId: number;
+  artistName: string;
+  genreIds?: number[]; // Đổi từ genreId? sang genreIds? (mảng)
+  private: boolean;
+  audioFile: File;
+  coverImage: File;
+  duration?: string; // Thêm trường duration (tùy chọn)
+}
+
+export interface UpdateSongRequest {
+  id: number;
+  title: string;
+  artistId: number;
+  artistName: string;
   genreIds?: number[]; // Đổi từ genreId? sang genreIds? (mảng)
   private: boolean;
   audioFile: File;
@@ -25,7 +44,7 @@ export interface CreateSongRequest {
 }
 
 // Response types cho Song API
-export interface CreateSongResponse {
+export interface SongResponse {
   success: boolean;
   message: string;
   data?: Song;
@@ -48,16 +67,20 @@ export interface GetGenresResponse {
 export interface SongApiResponse {
   id: number;
   title: string;
-  artistId: number;
+  artistId?: number;
+  artistAvatar?: string;
   artistName: string;
   fileUrl: string;
   coverUrl: string;
-  duration: number | null;
-  uploadedAt: string;
-  views: number;
-  private: boolean;
-  genreIds: number[] | null;
-  genreNames: string[] | null; // Sửa từ string sang string[]
+  duration?: number | null;
+  uploadedAt?: string;
+  likes?: number;
+  reposts?: number;
+  comments?: number;
+  views?: number;
+  private?: boolean;
+  genreIds?: number[] | [];
+  genreNames?: string[] | []; // Sửa từ string sang string[]
 }
 
 export interface PaginatedSongsData {
@@ -85,19 +108,20 @@ export interface GetSongsByArtistResponse {
   errors: null | unknown;
 }
 
+export interface GetSongsByIdResponse {
+  success: boolean;
+  message: string;
+  data: SongApiResponse;
+  errors: null | unknown;
+}
+
 // Extended song interface cho page component
 export interface SongDisplayData {
-  id: number;
+  songId: number;
   thumbnail: string;
   artistName: string;
   songTitle: string;
   genreName: string;
-  hashtags: string[];
-  musicInfo: string;
-  likes: number;
-  comments: number;
-  saves: number;
-  shares: number;
   artistAvatar: string;
   fileUrl: string;
   audioUrl: string;

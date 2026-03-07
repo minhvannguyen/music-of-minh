@@ -17,6 +17,7 @@ import { useState } from "react";
 import { useTheme } from "@/contexts/themeContext";
 import AuthSection from "./auth/AuthSection";
 import NotificationPopup from "@/components/notificationPopup";
+import { useNotification } from "@/contexts/notificationContext";
 
 const menuItems = [
   { label: "Đề xuất", icon: <Home size={25} />, href: "/" },
@@ -33,31 +34,8 @@ export default function Sidebar() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotificationPopup, setShowNotificationPopup] = useState(false);
+  const { notifications, unreadCount, markAllAsRead} = useNotification();
 
-  // 🎯 Mock notifications
-  const [notifications, setNotifications] = useState([
-    {
-      username: "Mai Anh",
-      message: "đã thích bài hát của bạn 🎵",
-      time: "2 phút trước",
-      isRead: false,
-    },
-    {
-      username: "Hoàng Dũng",
-      message: "đã bình luận: 'Hay quá 😍'",
-      time: "10 phút trước",
-      isRead: true,
-    },
-    {
-      username: "Admin",
-      message: "đã thêm tính năng mới cho bạn!",
-      time: "1 giờ trước",
-      isRead: false,
-    },
-  ]);
-
-  // 🧮 Tính số lượng chưa đọc
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const handleOpenNotifications = () => {
     setShowNotificationPopup(true);
@@ -65,16 +43,17 @@ export default function Sidebar() {
 
   // ✅ Khi đóng popup -> đánh dấu tất cả đã đọc
   const handleCloseNotification = () => {
-    setShowNotificationPopup(false);
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-  };
+  setShowNotificationPopup(false);
+  markAllAsRead();
+};
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-    }
-  };
+const handleSearch = (e: React.FormEvent) => {
+  e.preventDefault();
+
+  // if (!searchQuery.trim()) return;
+
+  router.push(`/search?q=${encodeURIComponent(searchQuery)}&type=songs`);
+};
 
   return (
     <>
@@ -94,6 +73,7 @@ export default function Sidebar() {
           <form onSubmit={handleSearch}>
             <div className="relative">
               <Search
+                onClick={handleSearch}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground"
                 size={20}
               />
@@ -160,9 +140,8 @@ export default function Sidebar() {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-2 text-sm text-muted-foreground space-y-1">
+        <div className="px-6 text-sm text-muted-foreground space-y-1">
           <p>Công ty</p>
-          <p>Chương trình</p>
           <p>Điều khoản và chính sách</p>
           <p>© 2025 Music of Minh</p>
         </div>

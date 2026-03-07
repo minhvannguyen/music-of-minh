@@ -57,18 +57,18 @@ export default function AuthSection() {
 
   const Avatar = ({ size = 36 }: { size?: number }) => {
     if (!user) return null;
-    
+
     const initials = user.username?.charAt(0)?.toUpperCase() ?? "U";
-    
+
     // Chuyển đổi relative path thành full URL
     const getAvatarUrl = (url: string | null | undefined): string | null => {
       if (!url) return null;
-      
+
       // Nếu đã là full URL (http/https), giữ nguyên
       if (url.startsWith("http://") || url.startsWith("https://")) {
         return url;
       }
-      
+
       // Nếu là relative path, thêm API base URL
       if (url.startsWith("/")) {
         const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
@@ -76,12 +76,12 @@ export default function AuthSection() {
         const baseUrl = apiBaseUrl.replace(/\/$/, "");
         return `${baseUrl}${url}`;
       }
-      
+
       return url;
     };
-    
+
     const avatarUrl = getAvatarUrl(user.avatarUrl);
-    
+
     return avatarUrl ? (
       // eslint-disable-next-line @next/next/no-img-element
       <img
@@ -92,7 +92,7 @@ export default function AuthSection() {
         className="rounded-lg object-cover"
         onError={(e) => {
           // Nếu ảnh load lỗi, ẩn ảnh và hiển thị placeholder
-          e.currentTarget.style.display = 'none';
+          e.currentTarget.style.display = "none";
         }}
       />
     ) : (
@@ -147,7 +147,10 @@ export default function AuthSection() {
             align="end"
           >
             <button
-              onClick={() => router.push("/profile")}
+              onClick={() => {
+                if (!user?.id) return;
+                router.push(`/profile/${user.id}`);
+              }}
               className="flex items-center gap-3 px-2 py-2 w-full hover:bg-accent rounded-md transition-colors cursor-pointer"
             >
               <Avatar size={36} />
@@ -160,7 +163,7 @@ export default function AuthSection() {
                 </div>
               </div>
             </button>
-            <DropdownMenuSeparator />
+            {/* <DropdownMenuSeparator />
 
             <DropdownMenuItem asChild>
               <button className="w-full font-medium flex items-center gap-3 ml-3">
@@ -175,8 +178,8 @@ export default function AuthSection() {
                 <span>Thanh toán</span>
               </button>
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            
+            <DropdownMenuSeparator /> */}
+
             {/* Theme Toggle */}
             <div className="px-2 py-1.5">
               <ThemeToggle />
@@ -213,7 +216,7 @@ export default function AuthSection() {
           setActiveModal("verify-register");
         }}
       />
-      
+
       {/* Modal xác thực OTP khi đăng ký */}
       {registerUserData && (
         <VerifyEmailRegister

@@ -1,25 +1,19 @@
 import { RefObject } from "react";
 
 export interface NowPlayingCardProps {
+  index: number;
+  songId: number;
   videoUrl?: string;
   thumbnail?: string;
   artistName: string;
   songTitle: string;
-  genreName: string;
-  hashtags?: string[];
-  musicInfo: string;
-  likes: number;
-  comments: number;
-  saves: number;
-  shares: number;
+  genreName: string;  
   artistAvatar: string;
   isLiked?: boolean;
-  isSaved?: boolean;
   isFollowing?: boolean;
   isMuted?: boolean;
   isPlaying?: boolean;
   audioRef?: RefObject<HTMLAudioElement | null>;
-  onLike?: () => void;
   onComment?: () => void;
   onSave?: () => void;
   onShare?: () => void;

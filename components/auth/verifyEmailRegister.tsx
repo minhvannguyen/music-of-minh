@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/form";
 import { toast } from "sonner";
 
-import { authAPI } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 
 const verifySchema = z.object({
