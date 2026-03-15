@@ -109,7 +109,7 @@ export default function NowPlayingCard({ song }: { song: SongApiResponse }) {
       toast.success("Đã lưu vào playlist!");
       refreshPlaylists();
     } catch {
-      toast.error("Lỗi lưu playlist");
+      toast.error("Bài hát đã có trong playlist!9");
     }
   };
 

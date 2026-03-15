@@ -18,26 +18,30 @@ export function useAuth() {
   const [loading, setLoading] = useState(false);
 
   const login = async (email: string, password: string) => {
-    try {
-      setLoading(true);
-      const response = await authAPI.login(email, password);
+  setLoading(true);
+  try {
+    const response = await authAPI.login(email, password);
 
-      // notify UI
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("auth-changed"));
-      }
-
-      return { success: true, data: response };
-
-    } catch (err: unknown) {
-      console.error("Login error:", err);
-      const apiError = err as ApiError;
-      const message = apiError?.response?.data?.message || apiError?.message || "Đăng nhập thất bại";
-      return { success: false, message };
-    } finally {
-      setLoading(false);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("auth-changed"));
     }
-  };
+
+    return { success: true, data: response };
+
+  } catch (err: unknown) {
+    console.error("Login error:", err);
+
+    const message =
+      (err as ApiError)?.response?.data?.message ||
+      (err as ApiError)?.message ||
+      "Đăng nhập thất bại";
+
+    return { success: false, message };
+
+  } finally {
+    setLoading(false);
+  }
+};
 
   const register = async (email: string) => {
     try {

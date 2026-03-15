@@ -52,15 +52,17 @@ export default function LoginForm({
         toast.success("Đăng nhập thành công!");
         onSuccess();
       } else {
-        toast.error(result.message || "Đăng nhập thất bại! sai tài khoản hoặc mặt khẩu!");
+        toast.error(
+          result.message || "Đăng nhập thất bại! sai tài khoản hoặc mặt khẩu!",
+        );
       }
     } catch (error: unknown) {
       toast.error(
-        error instanceof Error ? error.message : "Đăng nhập thất bại!"
+        error instanceof Error ? error.message : "Đăng nhập thất bại!",
       );
     }
   };
-  
+
   // reset khi modal mở lại
   useEffect(() => {
     form.reset({ email: "", password: "" });
@@ -68,7 +70,11 @@ export default function LoginForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" autoComplete="off">
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="space-y-4"
+        autoComplete="off"
+      >
         <FormField
           control={form.control}
           name="email"
@@ -79,8 +85,7 @@ export default function LoginForm({
                 <Input
                   placeholder="Nhập email..."
                   type="email"
-                  autoComplete="one-time-code"  
-                  
+                  autoComplete="email"
                   {...field}
                   className={`${
                     theme === "dark"
@@ -105,7 +110,7 @@ export default function LoginForm({
                   <Input
                     type={showPassword ? "text" : "password"}
                     placeholder="Nhập mật khẩu..."
-                    autoComplete="new-password"  
+                    autoComplete="current-password"
                     {...field}
                     className={`${
                       theme === "dark"
@@ -142,7 +147,14 @@ export default function LoginForm({
           disabled={loading}
           className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
         >
-          {loading && <Loader2 className="animate-spin mr-2" />} Đăng nhập
+          {loading ? (
+            <>
+              <Loader2 className="animate-spin mr-2" />
+              Đang đăng nhập...
+            </>
+          ) : (
+            "Đăng nhập"
+          )}
         </Button>
       </form>
     </Form>

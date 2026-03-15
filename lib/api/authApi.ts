@@ -82,9 +82,18 @@ api.interceptors.response.use(
 
 export const authAPI = {
   login: async (email: string, password: string) => {
-    const response = await api.post("/auth/Login", { email, password });
-    return response.data;
-  },
+  const response = await api.post(
+    "/auth/Login",
+    { email, password },
+    {
+      headers: {
+        "x-skip-refresh": "1", // 🔥 QUAN TRỌNG
+      },
+    }
+  );
+
+  return response.data;
+},
 
   // Gửi email đăng ký và nhận OTP
   register: async (email: string) => {
