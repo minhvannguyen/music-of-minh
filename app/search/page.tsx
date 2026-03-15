@@ -50,7 +50,7 @@ export default function Search() {
 
         if (activeFilter === "songs") {
           const res = await songsAPI.searchSongs(keyword, 1, 20);
-          setSongs(res?.data ?? []);
+          setSongs(res?.items ?? []);
         }
 
         if (activeFilter === "playlists") {
@@ -65,7 +65,7 @@ export default function Search() {
 
         if (activeFilter === "people") {
           const res = await userAPI.searchUsers(keyword, 1, 20);
-          setPeople(res?.data?.data ?? []);
+          setPeople(res?.data ?? []);
         }
       } catch (error) {
         console.error("Search error:", error);
@@ -128,21 +128,21 @@ export default function Search() {
             {/* SONGS */}
             {!loading &&
               activeFilter === "songs" &&
-              songs.map((song) => (
+              songs?.map((song) => (
                 <RenderSongList key={song.id} song={song} songs={songs} />
               ))}
 
             {/* PLAYLISTS */}
             {!loading &&
               activeFilter === "playlists" &&
-              playlists.map((playlist) => (
+              playlists?.map((playlist) => (
                 <RenderPlayList key={playlist.id} playlist={playlist} />
               ))}
 
             {/* PEOPLE */}
             {!loading &&
               activeFilter === "people" &&
-              people.map((user) => (
+              people?.map((user) => (
                 <RenderUserList key={user.id} user={user} />
               ))}
 

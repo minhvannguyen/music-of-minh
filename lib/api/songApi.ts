@@ -283,6 +283,6 @@ export const songsAPI = {
       },
       
     });
-    return response.data;
+    return response.data.data;
   },
 };

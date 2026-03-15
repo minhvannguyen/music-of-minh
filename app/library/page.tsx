@@ -13,25 +13,21 @@ import { useRouter } from "next/navigation";
 import { Playlist } from "@/types/playList";
 import { useSongContext } from "@/contexts/songContext";
 import { useFavoriteContext } from "@/contexts/favoriteContext";
-import { usePlayListContext } from "@/contexts/playListContext";
 import RenderPlayList from "@/components/cards/renderPlayList";
 import PlaylistDetail from "@/components/PlaylistDetail";
 
 export default function Library() {
   const router = useRouter();
-  const { user, isLoading: authLoading, isLoggedIn } = useAuthContext();
+  const { user, isLoggedIn } = useAuthContext();
 
-  const { songs: contextSongs, isLoading: songsLoading } = useSongContext();
+  const { songs: contextSongs } = useSongContext();
   const {
     favoriteSongs,
     isLoading: favoritesLoading,
     refreshFavorites,
   } = useFavoriteContext();
-  const { playlists, isLoading: playlistsLoading } = usePlayListContext();
 
   const [activeFilter, setActiveFilter] = useState("songUpload");
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [avatarError, setAvatarError] = useState(false);
   const [apiSongs, setApiSongs] = useState<SongApiResponse[]>([]);
   const [isLoadingApiSongs, setIsLoadingApiSongs] = useState(false);
   const [isLoadingApiPlaylists, setIsLoadingApiPlaylists] = useState(false);
@@ -45,16 +41,6 @@ export default function Library() {
   const [totalItems, setTotalItems] = useState(0);
   const pageSize = 10; // Số bài hát mỗi trang
 
-  // Helper function để build full URL
-  const buildFullUrl = (path: string): string => {
-    if (!path) return "";
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-      return path;
-    }
-    const baseUrl = "https://localhost:7114";
-    return path.startsWith("/") ? `${baseUrl}${path}` : `${baseUrl}/${path}`;
-  };
-
   // Kiểm tra đăng nhập khi mount
   useEffect(() => {
     if (!isLoggedIn) {
@@ -63,33 +49,6 @@ export default function Library() {
       return;
     }
   }, [isLoggedIn, router]);
-
-  // Format duration từ seconds sang MM:SS
-  const formatDuration = (seconds: number | null): string => {
-    if (!seconds) return "0:00";
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  // Format uploadedAt sang readable date
-  const formatUploadTime = (dateString: string): string => {
-    try {
-      const date = new Date(dateString);
-      const now = new Date();
-      const diffMs = now.getTime() - date.getTime();
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-      if (diffDays === 0) return "Hôm nay";
-      if (diffDays === 1) return "Hôm qua";
-      if (diffDays < 7) return `${diffDays} ngày trước`;
-      if (diffDays < 30) return `${Math.floor(diffDays / 7)} tuần trước`;
-      if (diffDays < 365) return `${Math.floor(diffDays / 30)} tháng trước`;
-      return `${Math.floor(diffDays / 365)} năm trước`;
-    } catch {
-      return dateString;
-    }
-  };
 
   const refreshPlaylists = async () => {
     if (!isLoggedIn || !user?.id) {

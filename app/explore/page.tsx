@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { songsAPI } from "@/lib/api/songApi";
 import { playlistAPI } from "@/lib/api/playlistApi";
 import { getRecentlyPlayed } from "@/lib/local/recentlyPlayed";
-import { mockRecommendedSongs } from "@/mock/recommendedSongs";
 import { SongApiResponse } from "@/types/song";
 import { Playlist } from "@/types/playList";
 import { useRouter } from "next/navigation";

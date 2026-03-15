@@ -119,7 +119,7 @@ export const userAPI = {
         pageSize,
       },
     });
-    return response.data;
+    return response.data.data;
   },
 
   // Lấy thông tin user theo ID

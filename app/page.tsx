@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { songsAPI } from "@/lib/api/songApi";
 import { SongApiResponse } from "@/types/song";
