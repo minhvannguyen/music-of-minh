@@ -67,7 +67,7 @@ export default function EditSongDialog({
     fetchGenres();
   }, []);
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://localhost:7114";
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
   const fixUrl = (url?: string | null) => {
     if (!url) return null;

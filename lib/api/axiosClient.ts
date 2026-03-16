@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Tạo instance axios dùng chung
 export const api = axios.create({
-  baseURL: "https://localhost:7114/api",
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
   headers: {
     "Content-Type": "application/json",
   },

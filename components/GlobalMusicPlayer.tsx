@@ -33,10 +33,18 @@ export default function GlobalMusicPlayer() {
   };
 
   const buildFullUrl = (p?: string) => {
-    if (!p) return "";
-    if (p.startsWith("http")) return p;
-    return `https://localhost:7114/${p.replace(/^\//, "")}`;
-  }
+  if (!p) return "";
+
+  // nếu đã là url đầy đủ
+  if (p.startsWith("http")) return p;
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+
+  // bỏ /api để lấy root server
+  const baseUrl = apiUrl.replace(/\/api$/, "");
+
+  return `${baseUrl}/${p.replace(/^\//, "")}`;
+};
 
   return (
     <div className="fixed left-0 bottom-0 w-64 bg-muted text-foreground p-3 border-t border-white/10 flex flex-col gap-3 z-50 rounded-2xl">

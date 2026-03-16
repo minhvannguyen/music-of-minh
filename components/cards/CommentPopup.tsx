@@ -22,7 +22,7 @@ import ReportDialog from "../ReportDialog";
 /* ============================================================
    Helpers
 ============================================================ */
-const BASE_URL = "https://localhost:7114";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const buildFullUrl = (path?: string) => {
   if (!path) return "";

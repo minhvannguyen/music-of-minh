@@ -33,11 +33,19 @@ export default function ExploreSongCard({
     );
   };
 
-  const buildFullUrl = (path?: string): string => {
-    if (!path) return "";
-    if (path.startsWith("http")) return path;
-    return `https://localhost:7114${path.startsWith("/") ? "" : "/"}${path}`;
-  };
+  const buildFullUrl = (p?: string) => {
+  if (!p) return "";
+
+  // nếu đã là url đầy đủ
+  if (p.startsWith("http")) return p;
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+
+  // bỏ /api để lấy root server
+  const baseUrl = apiUrl.replace(/\/api$/, "");
+
+  return `${baseUrl}/${p.replace(/^\//, "")}`;
+};
 
 const handlePlay = () => {
   if (currentSong?.id === song.id) {

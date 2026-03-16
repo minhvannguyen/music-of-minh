@@ -118,10 +118,18 @@ export default function NowPlayingCard({ song }: { song: SongApiResponse }) {
   const [isHovered, setIsHovered] = useState(false);
 
   const buildFullUrl = (p?: string) => {
-    if (!p) return "";
-    if (p.startsWith("http")) return p;
-    return `https://localhost:7114/${p.replace(/^\//, "")}`;
-  };
+  if (!p) return "";
+
+  // nếu đã là url đầy đủ
+  if (p.startsWith("http")) return p;
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+
+  // bỏ /api để lấy root server
+  const baseUrl = apiUrl.replace(/\/api$/, "");
+
+  return `${baseUrl}/${p.replace(/^\//, "")}`;
+};
 
   if (!song) return null;
 
