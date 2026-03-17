@@ -179,13 +179,23 @@ export default function RenderSongList({
   };
 
   const buildFullUrl = (path: string): string => {
-    if (!path) return "";
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-      return path;
-    }
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    return path.startsWith("/") ? `${baseUrl}${path}` : `${baseUrl}/${path}`;
-  };
+  if (!path) return "";
+
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+
+  if (!baseUrl) {
+    console.error("❌ NEXT_PUBLIC_API_URL is undefined");
+    return path; // fallback
+  }
+
+  return path.startsWith("/")
+    ? `${baseUrl}${path}`
+    : `${baseUrl}/${path}`;
+};
 
   const handlePlay = (song: SongApiResponse) => {
     // Nếu bài đang click là bài đang phát → toggle play/pause
