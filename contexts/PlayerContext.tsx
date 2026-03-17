@@ -175,7 +175,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   if (url.startsWith("http")) return url;
 
   // nếu có env thì dùng
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const base = process.env.NEXT_PUBLIC_FILE_URL;
 
   if (base) {
     return `${base}${url}`;

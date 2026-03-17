@@ -20,13 +20,16 @@ export default function RenderUserList({
   const { toggleFollow, isFollowing } = useFollow(user.id);
 
   const buildFullUrl = (path: string): string => {
-    if (!path) return "";
-    if (path.startsWith("http://") || path.startsWith("https://")) {
-      return path;
-    }
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    return path.startsWith("/") ? `${baseUrl}${path}` : `${baseUrl}/${path}`;
-  };
+  if (!path) return "";
+
+  if (path.startsWith("http")) return path;
+
+  const baseUrl = process.env.NEXT_PUBLIC_FILE_URL || "";
+
+  return path.startsWith("/")
+    ? `${baseUrl}${path}`
+    : `${baseUrl}/${path}`;
+};
 
   return (
     <div onClick={() => router.push(`/profile/${user.id}`)} className="flex items-center gap-4 p-8 mr-12 ml-12 hover:bg-muted/50 rounded-lg transition-colors">
