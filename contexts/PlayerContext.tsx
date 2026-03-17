@@ -169,9 +169,21 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
    *  ▶ PLAY FUNCTION
    *  ========================= */
   const buildFullUrl = (url: string) => {
-    if (url.startsWith("http")) return url;
-    return `${process.env.NEXT_PUBLIC_API_BASE_URL}${url}`;
-  };
+  if (!url) return "";
+
+  // đã là full URL
+  if (url.startsWith("http")) return url;
+
+  // nếu có env thì dùng
+  const base = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  if (base) {
+    return `${base}${url}`;
+  }
+
+  // fallback (quan trọng)
+  return url.startsWith("/") ? url : `/${url}`;
+};
 
   const play = async (index?: number) => {
     const audio = audioRef.current;
