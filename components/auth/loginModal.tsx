@@ -153,7 +153,7 @@ export default function LoginModal({
             window.google.accounts.id.renderButton(buttonRef.current, {
               theme: theme === "dark" ? "filled_black" : "outline",
               size: "large",
-              width: "100%",
+              width: "300",
             });
             setButtonReady(true);
             console.log("✅ Google button rendered successfully");
@@ -176,7 +176,7 @@ export default function LoginModal({
       google.accounts.id.renderButton(buttonRef.current, {
         theme: theme === "dark" ? "filled_black" : "outline",
         size: "large",
-        width: "100%",
+        width: "300",
       });
       setButtonReady(true);
       console.log("✅ Google button rendered successfully");
@@ -215,7 +215,7 @@ export default function LoginModal({
         </div>
 
         {/* Container cho Google button */}
-        <div className="w-full relative" style={{ minHeight: '40px', position: 'relative' }}>
+        <div className="w-full relative flex justify-center" style={{ minHeight: '40px' }}>
           {/* Loading overlay khi đang xử lý authentication */}
           {isLoadingGoogleAuth && (
             <div className="absolute inset-0 bg-yellow-500/20 dark:bg-yellow-500/30 rounded-lg flex items-center justify-center z-10 backdrop-blur-sm">
@@ -238,7 +238,7 @@ export default function LoginModal({
           {/* Container cho Google SDK - luôn tồn tại nhưng ẩn khi đang loading */}
           <div 
             ref={buttonRef} 
-            className={buttonReady && !isLoadingGoogleAuth ? "w-full" : "hidden"}
+            className={buttonReady && !isLoadingGoogleAuth ? "flex justify-center w-full" : "hidden"}
             style={{ 
               display: buttonReady && !isLoadingGoogleAuth ? 'block' : 'none',
               opacity: isLoadingGoogleAuth ? 0.5 : 1,
