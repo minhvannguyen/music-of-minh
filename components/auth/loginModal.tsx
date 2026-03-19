@@ -234,7 +234,6 @@ export default function LoginModal({
           <span className="flex-1 border-t border-gray-300" />
         </div>
 
-        <div className="flex justify-center">
           {/* Container cho Google button */}
           <div
             className="w-full relative"
@@ -260,19 +259,22 @@ export default function LoginModal({
             )}
 
             {/* Container cho Google SDK - luôn tồn tại nhưng ẩn khi đang loading */}
+            <div className="w-full flex justify-center">
             <div
               ref={buttonRef}
               className={
                 buttonReady && !isLoadingGoogleAuth ? "w-full" : "hidden"
               }
               style={{
+                width: 300,
+                margin: "0 auto",
                 display: buttonReady && !isLoadingGoogleAuth ? "block" : "none",
                 opacity: isLoadingGoogleAuth ? 0.5 : 1,
                 pointerEvents: isLoadingGoogleAuth ? "none" : "auto",
               }}
             />
           </div>
-        </div>
+          </div>
 
         <p
           className={`text-center text-sm mt-4 ${
