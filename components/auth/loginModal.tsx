@@ -266,7 +266,7 @@ export default function LoginModal({
                 buttonReady && !isLoadingGoogleAuth ? "w-full" : "hidden"
               }
               style={{
-                width: 220,
+                width: 225,
                 margin: "0 auto",
                 display: buttonReady && !isLoadingGoogleAuth ? "block" : "none",
                 opacity: isLoadingGoogleAuth ? 0.5 : 1,
