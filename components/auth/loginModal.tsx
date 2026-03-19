@@ -31,7 +31,7 @@ declare global {
             options: {
               theme?: string;
               size?: string;
-              width?: string;
+              width?: number;
             },
           ) => void; // THÊM DÒNG NÀY
         };
@@ -169,7 +169,7 @@ export default function LoginModal({
             window.google.accounts.id.renderButton(buttonRef.current, {
               theme: theme === "dark" ? "filled_black" : "outline",
               size: "large",
-              width: "100%",
+              width: 300,
             });
             setButtonReady(true);
             console.log("✅ Google button rendered successfully");
@@ -192,7 +192,7 @@ export default function LoginModal({
       google.accounts.id.renderButton(buttonRef.current, {
         theme: theme === "dark" ? "filled_black" : "outline",
         size: "large",
-        width: "100%",
+        width: 300,
       });
       setButtonReady(true);
       console.log("✅ Google button rendered successfully");
