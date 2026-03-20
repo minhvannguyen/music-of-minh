@@ -18,11 +18,11 @@ import { CreatePlaylistRequest, Playlist } from "@/types/playList";
 import { playlistAPI } from "@/lib/api/playlistApi";
 
 interface Props {
-  mode?: "create" | "edit";            // 🆕 chế độ tạo hoặc sửa
-  playlist?: Playlist;                 // 🆕 dữ liệu playlist khi sửa
+  mode?: "create" | "edit"; // 🆕 chế độ tạo hoặc sửa
+  playlist?: Playlist; // 🆕 dữ liệu playlist khi sửa
   onCreate?: (data: Playlist) => void;
   onUpdate?: (data: Playlist) => void; // 🆕 callback khi update
-  refreshPlaylists?: () => void;       // 🆕 callback khi refresh
+  refreshPlaylists?: () => void; // 🆕 callback khi refresh
   children?: ReactNode;
 }
 
@@ -88,6 +88,13 @@ export default function PlaylistDialog({
 
     setIsLoading(true);
 
+    const resetForm = () => {
+      setNewPlaylist({ name: "" });
+      setCover(null);
+      setCoverPreview(null);
+      setIsPublic(true);
+    };
+
     try {
       if (mode === "create") {
         // ------------------ CREATE -------------------
@@ -103,39 +110,41 @@ export default function PlaylistDialog({
         if (res?.status === 200 || res?.success) {
           toast.success("Tạo playlist thành công!");
           onCreate?.(res.data);
+          refreshPlaylists?.(); // 🔥 thêm dòng này
+
+          resetForm(); // 🔥 reset form
           setOpenDialog(false);
         } else {
           toast.error(res?.message || "Không thể tạo playlist!");
         }
       } else if (mode === "edit" && playlist?.id) {
-  const data = {
-    id: playlist.id,
-    name: newPlaylist.name.trim(),
-    isPublic: isPublic,
-    coverImage: cover || undefined,
-  };
+        const data = {
+          id: playlist.id,
+          name: newPlaylist.name.trim(),
+          isPublic: isPublic,
+          coverImage: cover || undefined,
+        };
 
-  const res = await playlistAPI.updatePlaylist(data);
+        const res = await playlistAPI.updatePlaylist(data);
 
-  if (res?.status === 200 || res?.success) {
-    toast.success("Cập nhật playlist thành công!");
+        if (res?.status === 200 || res?.success) {
+          toast.success("Cập nhật playlist thành công!");
 
-    // 🔥 Build object cập nhật (KHÔNG phụ thuộc res.data)
-    const updatedPlaylist: Playlist = {
-      ...playlist,
-      name: newPlaylist.name.trim(),
-      isPublic: isPublic,
-      coverUrl: cover ? coverPreview : playlist.coverUrl, // nếu đổi ảnh thì dùng preview
-    };
+          // 🔥 Build object cập nhật (KHÔNG phụ thuộc res.data)
+          const updatedPlaylist: Playlist = {
+            ...playlist,
+            name: newPlaylist.name.trim(),
+            isPublic: isPublic,
+            coverUrl: cover ? coverPreview : playlist.coverUrl, // nếu đổi ảnh thì dùng preview
+          };
 
-    onUpdate?.(updatedPlaylist);
-    refreshPlaylists?.();
-    setOpenDialog(false);
-  } else {
-    toast.error(res?.message || "Không thể cập nhật playlist!");
-  }
-}
-
+          onUpdate?.(updatedPlaylist);
+          refreshPlaylists?.();
+          setOpenDialog(false);
+        } else {
+          toast.error(res?.message || "Không thể cập nhật playlist!");
+        }
+      }
     } catch (err) {
       toast.error("Có lỗi xảy ra!");
     } finally {
@@ -179,7 +188,11 @@ export default function PlaylistDialog({
             <Input type="file" accept="image/*" onChange={handleCoverChange} />
             {coverPreview && (
               <img
-                src={buildFullUrl(coverPreview)}
+                src={
+                  coverPreview?.startsWith("blob:")
+                    ? coverPreview
+                    : buildFullUrl(coverPreview)
+                }
                 className="mt-2 w-full h-32 object-cover rounded-md border"
               />
             )}
@@ -193,15 +206,19 @@ export default function PlaylistDialog({
 
           {/* Buttons */}
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => setOpenDialog(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpenDialog(false)}
+            >
               Huỷ
             </Button>
             <Button type="submit" disabled={isLoading}>
               {isLoading
                 ? "Đang lưu..."
                 : mode === "create"
-                ? "Tạo mới"
-                : "Cập nhật"}
+                  ? "Tạo mới"
+                  : "Cập nhật"}
             </Button>
           </div>
         </form>
